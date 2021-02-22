@@ -1,0 +1,46 @@
+Unprovisioned beacon, UUID: 53696c6162734465762d8829d8570b00 (29 88)type: PB-ADV
+-> confirm? (use buttons or keys 'y' / 'n')
+Sending prov request
+Node successfully provisioned. Address: 0003, uuid 0x53696C6162734465762D8829D8570B00
+requesting DCD from the node...
+DCD data event, received 26 bytes
+DCD data end event. Decoding the data.
+DCD: company ID 02ff, Product ID f0b0
+Num sig models: 6
+Num vendor models: 0
+model ID: 0002
+model ID: 1001
+model ID: 1302
+model ID: 0000
+model ID: 1008
+model ID: 1305
+Deploying appkey to node 0x0003
+ add appkey failed with code 0x185 (timeout)
+ trying again, attempt 1/5
+Deploying appkey to node 0x0003
+ appkey added
+APP BIND, config 1/2:: model 1001 key index 0
+ waiting bind ack
+ bind complete
+APP BIND, config 2/2:: model 1302 key index 0
+ waiting bind ack
+ bind complete
+PUB SET, config 1/2: model 1001 -> address c001
+ waiting pub ack
+ pub set OK
+PUB SET, config 2/2: model 1302 -> address c001
+ waiting pub ack
+ pub set OK
+SUB ADD, config 1/2: model 1001 -> address c002
+ waiting sub ack
+ sub add OK
+SUB ADD, config 2/2: model 1302 -> address c002
+ waiting sub ack
+ setting sub failed with code 0x185 (timeout)
+ trying again, attempt 1/5
+SUB ADD, config 2/2: model 1302 -> address c002
+ waiting sub ack
+ sub add OK
+***
+configuration complete
+***
