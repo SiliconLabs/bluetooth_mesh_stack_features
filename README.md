@@ -2,10 +2,6 @@
 <img src="https://bestpractices.coreinfrastructure.org/projects/74/badge">
 </a>
 
-<a href="https://buildkite.com/zephyr/zephyr">
-<img src="https://badge.buildkite.com/f5bd0dc88306cee17c9b38e78d11bb74a6291e3f40e7d13f31.svg?branch=master">
-</a>
-
 <a href="https://docs.silabs.com/bluetooth/latest/">
 <img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
 </a>
@@ -25,7 +21,7 @@
 
 # Silicon Labs Bluetooth Mesh Stack Feature Examples #
 
-This repo contains example projects which demonstrate the features of the Silicon Labs Bluetooth stack. The examples are categorized by the features that they demonstrate. These features are advertising, connections, GATT protocol, security, persistent storage, firmware upgrade, NCP, and system and performance.
+This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage, ADK and various models.
 
 ## Examples ##
 
