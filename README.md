@@ -7,7 +7,7 @@
 </a>
 
 <a href="https://docs.silabs.com/bluetooth/latest/">
-<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-brightblue.svg?longCache=true">
+<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
 </a>
 
 <table border="0">
