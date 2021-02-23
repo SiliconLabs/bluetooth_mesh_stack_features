@@ -12,6 +12,10 @@
 <img src="https://badge.buildkite.com/f5bd0dc88306cee17c9b38e78d11bb74a6291e3f40e7d13f31.svg?branch=master">
 </a>
 
+<a href="https://docs.silabs.com/bluetooth/latest/">
+<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-brightblue.svg?longCache=true">
+</a>
+
 <table border="0">
   <tr>
     <td align="left" valign="middle">
