@@ -1,7 +1,3 @@
-<a href="https://bestpractices.coreinfrastructure.org/projects/74">
-<img src="https://bestpractices.coreinfrastructure.org/projects/74/badge">
-</a>
-
 <a href="https://docs.silabs.com/bluetooth/latest/">
 <img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
 </a>
