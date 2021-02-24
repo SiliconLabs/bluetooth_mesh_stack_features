@@ -1,7 +1,13 @@
+<a href="https://www.bluetooth.com">
+<p align="center">
+  <img src="https://www.bluetooth.com/wp-content/themes/bluetooth/images/logos/bluetooth-logo-color-black.svg">
+</p>
+</a>
+
 <table border="0">
   <tr>
     <td align="left" valign="middle">
-    <h1>EFR32 Bluetooth Stack Feature Examples</h1>
+    <h1>EFR32 Bluetooth Mesh Stack Feature Examples</h1>
   </td>
   <td align="left" valign="middle">
     <a href="https://www.silabs.com/wireless/bluetooth">
@@ -11,26 +17,22 @@
   </tr>
 </table>
 
-# Silicon Labs Bluetooth Stack Feature Examples #
+<a href="https://docs.silabs.com/bluetooth/latest/">
+<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
+</a>
 
-This repo contains example projects which demonstrate the features of the Silicon Labs Bluetooth stack. The examples are categorized by the features that they demonstrate. These features are advertising, connections, GATT protocol, security, persistent storage, firmware upgrade, NCP, and system and performance.
+# Silicon Labs Bluetooth Mesh Stack Feature Examples #
+
+This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage, ADK and various models.
 
 ## Examples ##
 
-- Advertising
-- Connections
-- GATT Protocol
-- Security
-- Persistent Storage
-- Firmware Upgrade
-  - OTA for NCP Hosts
-  - OTA from Windows
-- NCP
-- System and Performance
-
-## Documentation ##
-
-Official documentation can be found at our [Developer Documentation](https://docs.silabs.com/bluetooth/latest/) page.
+- Provisioning
+- Node
+- Networking
+- Proxy Protocol
+- Models
+- ADK
 
 ## Reporting Bugs/Issues and Posting Questions and Comments ##
 
