@@ -21,20 +21,12 @@ This repository contains example projects which demonstrate the features of the 
 
 ## Examples ##
 
-- Advertising
-- Connections
-- GATT Protocol
-- Security
-- Persistent Storage
-- Firmware Upgrade
-  - OTA for NCP Hosts
-  - OTA from Windows
-- NCP
-- System and Performance
-
-## Documentation ##
-
-Official documentation can be found at our [Developer Documentation](https://docs.silabs.com/bluetooth/latest/) page.
+- Provisioning
+- Network
+- Proxy Protocol
+- Node
+- Models
+- ADK
 
 ## Reporting Bugs/Issues and Posting Questions and Comments ##
 
