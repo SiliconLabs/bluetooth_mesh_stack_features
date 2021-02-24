@@ -3,10 +3,6 @@
   <img src="https://www.bluetooth.com/wp-content/themes/bluetooth/images/logos/bluetooth-logo-color-black.svg">
 </p>
 </a>
-   
-<a href="https://docs.silabs.com/bluetooth/latest/">
-<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
-</a>
 
 <table border="0">
   <tr>
@@ -20,6 +16,10 @@
   </td>
   </tr>
 </table>
+
+<a href="https://docs.silabs.com/bluetooth/latest/">
+<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
+</a>
 
 # Silicon Labs Bluetooth Mesh Stack Feature Examples #
 
@@ -37,10 +37,6 @@ This repository contains example projects which demonstrate the features of the 
   - OTA from Windows
 - NCP
 - System and Performance
-
-## Documentation ##
-
-Official documentation can be found at our [Developer Documentation](https://docs.silabs.com/bluetooth/latest/) page.
 
 ## Reporting Bugs/Issues and Posting Questions and Comments ##
 
