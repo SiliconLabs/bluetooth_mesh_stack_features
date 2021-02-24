@@ -1,3 +1,9 @@
+<a href="https://www.bluetooth.com">
+<p align="center">
+  <img src="https://www.bluetooth.com/wp-content/themes/bluetooth/images/logos/bluetooth-logo-color-black.svg">
+</p>
+</a>
+   
 <a href="https://docs.silabs.com/bluetooth/latest/">
 <img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
 </a>
