@@ -1,5 +1,7 @@
-<a href="https://docs.silabs.com/bluetooth/latest/">
-<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
+<a href="https://www.bluetooth.com">
+<p align="center">
+  <img src="https://www.bluetooth.com/wp-content/themes/bluetooth/images/logos/bluetooth-logo-color-black.svg">
+</p>
 </a>
 
 <table border="0">
@@ -15,6 +17,10 @@
   </tr>
 </table>
 
+<a href="https://docs.silabs.com/bluetooth/latest/">
+<img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
+</a>
+
 # Silicon Labs Bluetooth Mesh Stack Feature Examples #
 
 This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage, ADK and various models.
@@ -22,9 +28,9 @@ This repository contains example projects which demonstrate the features of the 
 ## Examples ##
 
 - Provisioning
-- Network
-- Proxy Protocol
 - Node
+- Networking
+- Proxy Protocol
 - Models
 - ADK
 
