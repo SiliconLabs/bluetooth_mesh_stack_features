@@ -14,8 +14,17 @@ Known limitations:
     - removing nodes from the network
 
 ---------------------------------------------------------------------------------
-	
-See comments in the beginning of main_prov.c for instructions on how to bolt this code on 
-top of the soc-btmesh-light example. 
 
+2) Create an soc-btmesh-ligh project.
+	
+2) Drag and drop the folling files at the root directory of your project:
+  - app.c/h
+  - config.c/h
+  - main.c
+
+3) open your the dcd configurator of your project:
+  - add the config client model to the primary element of your project
+  - set the following macros in the memory configuration:
+    . Max Provisioner Devices : 4
+      
 This code has been tested with Bluetooth mesh SDK 1.7.3.

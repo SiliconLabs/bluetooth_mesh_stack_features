@@ -22,7 +22,7 @@
 </a>
 
 <a href="https://www.zlib.net/zlib_license.html">
-<img src="https://img.shields.io/badge/Zlib%20license-green.svg?longCache=true">
+<img src="https://img.shields.io/badge/Zlib-license-lightgrey.svg?longCache=true">
 </a>
 
 # Silicon Labs Bluetooth Mesh Stack Feature Examples #
