@@ -18,4 +18,4 @@ Known limitations:
 See comments in the beginning of main_prov.c for instructions on how to bolt this code on 
 top of the soc-btmesh-light example. 
 
-This code has been tested with Bluetooth mesh SDK 1.4.0.
+This code has been tested with Bluetooth mesh SDK 1.7.3.

@@ -21,6 +21,10 @@
 <img src="https://img.shields.io/badge/Silabs%20Bluetooth%20Mesh-documentation-blue.svg?longCache=true">
 </a>
 
+<a href="https://www.zlib.net/zlib_license.html">
+<img src="https://img.shields.io/badge/Zlib%20license-green.svg?longCache=true">
+</a>
+
 # Silicon Labs Bluetooth Mesh Stack Feature Examples #
 
 This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage, ADK and various models.
