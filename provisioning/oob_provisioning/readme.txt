@@ -1,3 +1,4 @@
+
 ---------------------------------------------------------------------------------
 NOTE: This example is intended only for small scale experimental use. It is 
 not meant to be used as a basis for any production use and the code.
@@ -13,8 +14,8 @@ Known limitations:
     - removing nodes from the network
 
 ---------------------------------------------------------------------------------
-
-See comments in the beginning of app.c for instructions on how to bolt this code on 
+	
+See comments in the beginning of main_prov.c for instructions on how to bolt this code on 
 top of the soc-btmesh-light example. 
 
-This code has been tested with Bluetooth mesh SDK 1.5.2.0
+This code has been tested with Bluetooth mesh SDK 1.4.0.

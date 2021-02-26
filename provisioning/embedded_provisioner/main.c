@@ -1,19 +1,38 @@
 /***************************************************************************//**
  * @file
- * @brief Silicon Labs Bluetooth mesh light example
- * This example implements a Bluetooth mesh light node.
+ * @brief Silicon Labs Bluetooth mesh light example this example implements an
+ * Embedded provisioner.
  *******************************************************************************
  * # License
- * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
- * The licensor of this software is Silicon Laboratories Inc. Your use of this
- * software is governed by the terms of Silicon Labs Master Software License
- * Agreement (MSLA) available at
- * www.silabs.com/about-us/legal/master-software-license-agreement. This
- * software is distributed to you in Source Code format and is governed by the
- * sections of the MSLA applicable to Source Code.
+ * SPDX-License-Identifier: Zlib
  *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
+ *
+ *******************************************************************************
+ * # Experimental Quality
+ * This code has not been formally tested and is provided as-is. It is not
+ * suitable for production environments. In addition, this code will not be
+ * maintained and there may be no bug maintenance planned for these resources.
+ * Silicon Labs may update projects from time to time.
  ******************************************************************************/
 
 /* System includes */
@@ -33,7 +52,7 @@
 #include <gecko_configuration.h>
 #include <mesh_sizes.h>
 
-#include "src/stack.h"
+#include "stack.h"
 #include "gpiointerrupt.h"
 
 /* Libraries containing default Gecko configuration values */
@@ -137,30 +156,24 @@ static void button_init(void)
  ******************************************************************************/
 static void gecko_bgapi_classes_init(void)
 {
-    gecko_bgapi_class_dfu_init();
-    gecko_bgapi_class_system_init();
-    gecko_bgapi_class_le_gap_init();
-    gecko_bgapi_class_le_connection_init();
-    gecko_bgapi_class_gatt_init();
-    gecko_bgapi_class_gatt_server_init();
-    gecko_bgapi_class_hardware_init();
-    gecko_bgapi_class_flash_init();
-    gecko_bgapi_class_test_init();
-    gecko_bgapi_class_sm_init();
-    gecko_bgapi_class_mesh_node_init();
-    gecko_bgapi_class_mesh_prov_init();
-    gecko_bgapi_class_mesh_proxy_init();
-    gecko_bgapi_class_mesh_vendor_model_init();
-    gecko_bgapi_class_mesh_health_client_init();
-    gecko_bgapi_class_mesh_health_server_init();
-    gecko_bgapi_class_mesh_generic_client_init();
-    gecko_bgapi_class_mesh_generic_server_init();
-    gecko_bgapi_class_mesh_test_init();
-    gecko_bgapi_class_mesh_lpn_init();
-    gecko_bgapi_class_mesh_friend_init();
-    gecko_bgapi_class_mesh_proxy_client_init();
-    gecko_bgapi_class_mesh_proxy_server_init();
-    gecko_bgapi_class_mesh_config_client_init();
+  gecko_bgapi_class_dfu_init();
+  gecko_bgapi_class_system_init();
+  gecko_bgapi_class_le_gap_init();
+  gecko_bgapi_class_le_connection_init();
+  gecko_bgapi_class_gatt_init();
+  gecko_bgapi_class_gatt_server_init();
+  gecko_bgapi_class_hardware_init();
+  gecko_bgapi_class_flash_init();
+  gecko_bgapi_class_test_init();
+  gecko_bgapi_class_sm_init();
+  gecko_bgapi_class_mesh_node_init();
+  gecko_bgapi_class_mesh_prov_init();
+  gecko_bgapi_class_mesh_proxy_init();
+  gecko_bgapi_class_mesh_vendor_model_init();
+  gecko_bgapi_class_mesh_health_client_init();
+  gecko_bgapi_class_mesh_health_server_init();
+  gecko_bgapi_class_mesh_test_init();
+  gecko_bgapi_class_mesh_config_client_init();
 }
 
 /***************************************************************************//**
@@ -241,7 +254,7 @@ static void background(void)
   for(;;)
   {
     /* The BLE mesh machinery, remember that is a blocking call */
-    bkgndBLEMeshStack();
+    bkgndBLEMeshStack_app();
 
     /* command background */
     btherm_cmd_bkgnd();
@@ -302,8 +315,7 @@ static void Button_Event(const uint8_t pin)
   /* If Button 0 erase mesh entries */
   if(BSP_BUTTON0_PIN == pin)
   {
-    printf("BUTTON 0\r\n");
-
+    printf("Button Press NVM erase\r\n");
     /* perform a factory reset by erasing PS storage. This removes all the keys and other settings
        that have been configured for this node */
     gecko_cmd_flash_ps_erase_all();
@@ -315,7 +327,7 @@ static void Button_Event(const uint8_t pin)
   /* If Button 1, provision */
   if(BSP_BUTTON1_PIN == pin)
   {
-    printf("BUTTON 1\r\n");
+    printf("Button Press Provisioning\r\n");
     /* Indicate to the stack the it has to provision the next in the list */
     provisionBLEMeshStack(eMESH_PROV_NEXT);
   }
