@@ -1,10 +1,9 @@
 /***************************************************************************//**
  * @file
- * @brief Silicon Labs Bluetooth mesh light example this example implements an
- * Embedded provisioner.
+ * @brief Silicon Labs Bluetooth mesh Embedded provisioner.
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2021 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -303,7 +302,7 @@ static void btherm_cmd_bkgnd(void)
   if( key == 'p' )
   {
     /* Indicate to the stack the it has to provision the next in the list */
-    provisionBLEMeshStack(eMESH_PROV_NEXT);
+    provisionBLEMeshStack_app(eMESH_PROV_NEXT);
   }
 
   return;
@@ -329,7 +328,7 @@ static void Button_Event(const uint8_t pin)
   {
     printf("Button Press Provisioning\r\n");
     /* Indicate to the stack the it has to provision the next in the list */
-    provisionBLEMeshStack(eMESH_PROV_NEXT);
+    provisionBLEMeshStack_app(eMESH_PROV_NEXT);
   }
 
   /* Print ps store status after write BT mesh stuff */
