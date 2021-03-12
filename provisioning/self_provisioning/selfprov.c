@@ -3,7 +3,7 @@
  * @brief Self provisioning code
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2021 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * The licensor of this software is Silicon Laboratories Inc. Your use of this
@@ -15,16 +15,12 @@
  *
  ******************************************************************************/
 
-#include <stdio.h>
-#include "native_gecko.h"
+//#include <stdio.h>
+#include "sl_status.h"
+#include "sl_btmesh.h"
+#include "sl_app_log.h"
+#include "sl_btmesh_dcd.h"
 #include "selfprov.h"
-#include "mesh_app_memory_config.h"
-
-#ifdef ENABLE_LOGGING
-#define log(...) printf(__VA_ARGS__)
-#else
-#define log(...)
-#endif
 
 typedef struct _dcd_element
 {
@@ -53,14 +49,16 @@ static uint16_t get_unicast_address(void)
     uint16_t addr = UNICAST_ADDRESS;
 
     if (addr == 0 || addr > 0x7FFF) {
-        struct gecko_msg_system_get_bt_address_rsp_t * get_address_rsp;
-        get_address_rsp = gecko_cmd_system_get_bt_address();
-        bd_addr * btaddr = &get_address_rsp->address;
-        log("  bt address %02x:%02x:%02x:%02x:%02x:%02x\r\n", btaddr->addr[5], btaddr->addr[4], btaddr->addr[3], btaddr->addr[2], btaddr->addr[1], btaddr->addr[0]);
+        sl_status_t status;
+        bd_addr btaddr;
+        uint8_t type;
+        status = sl_bt_system_get_identity_address(&btaddr, &type);
+        (void)(status);
+        sl_app_log("  bt address %02x:%02x:%02x:%02x:%02x:%02x\r\n", btaddr.addr[5], btaddr.addr[4], btaddr.addr[3], btaddr.addr[2], btaddr.addr[1], btaddr.addr[0]);
 
-        addr = *(uint16_t *)&btaddr->addr[0] ^
-               *(uint16_t *)&btaddr->addr[2] ^
-               *(uint16_t *)&btaddr->addr[4];
+        addr = *(uint16_t *)&btaddr.addr[0] ^
+               *(uint16_t *)&btaddr.addr[2] ^
+               *(uint16_t *)&btaddr.addr[4];
         addr &= (0xFFFF<<UADDR_ELEM_BITS);
         addr &= (0xFFFF>>(UADDR_RSVD_BITS+1));
     }
@@ -74,7 +72,7 @@ static dcd_element_t * dcd_get_element(uint16_t elem_index)
     uint16_t index;
     size_t offset = 10;     //dcd header
 
-    if (elem_index < MESH_CFG_MAX_ELEMENTS) {
+    if (elem_index < SL_BTMESH_CONFIG_MAX_ELEMENTS) {
         for (index = 0; index <= elem_index; ++index) {
             if (offset + 4 > __mesh_dcd_len) {  //element header
                 p_elem = NULL;
@@ -171,54 +169,54 @@ void self_provisioning(void)
     aes_key_128 netkey = {NETWORK_KEY};
     aes_key_128 appkey = {APPLICATION_KEY};
     aes_key_128 devkey = {DEVICE_KEY};
+    sl_status_t status;
+    uint32_t count;
 
-    log(">self provisioning ..\r\n");
-
-    struct gecko_msg_mesh_test_get_key_count_rsp_t *key_count_rsp;
+    sl_app_log(">self provisioning ..\r\n");
 
     // Network key
-    key_count_rsp = gecko_cmd_mesh_test_get_key_count(0);
-    if (key_count_rsp->result) {
-        log(">failed to get netkey count (res = %d)\r\n", key_count_rsp->result);
+    count = 0;
+    status = sl_btmesh_node_get_key_count(0, &count);
+    if (status != SL_STATUS_OK) {
+        sl_app_log(">failed to get netkey count (sts = %d)\r\n", status);
         return;
     }
 
-    if (0 == key_count_rsp->count) {
+    if (count == 0) {
         // 1. Set provisioning data
         uint16_t addr = get_unicast_address();
-        struct gecko_msg_mesh_node_set_provisioning_data_rsp_t *set_prov_rsp;
-        set_prov_rsp = gecko_cmd_mesh_node_set_provisioning_data(devkey,    //device key
-                                                                 netkey,    //network key
-                                                                 0,         //netkey index
-                                                                 0,         //iv index 
-                                                                 addr,      //node address
-                                                                 0          //key refresh in progress
-                                                                 );
-        if (set_prov_rsp->result) {
-            log(">failed to set provisioning data (res = %d)\r\n", set_prov_rsp->result);
+        status = sl_btmesh_node_set_provisioning_data(devkey,  //device key
+                                                      netkey,  //network key
+                                                      0,       //netkey index
+                                                      0,       //iv index
+                                                      addr,    //node address
+                                                      0        //key refresh in progress
+                                                      );
+        if (status != SL_STATUS_OK) {
+            sl_app_log(">failed to set provisioning data (sts = %d)\r\n", status);
             return;
         }
 
-        log(">node self provisioned, address = %04x\r\n", addr);
+        sl_app_log(">node self provisioned, address = %04x\r\n", addr);
     }
 
     // Application key
-    key_count_rsp = gecko_cmd_mesh_test_get_key_count(1);
-    if (key_count_rsp->result) {
-        log(">failed to get appkey count (res = %d)\r\n", key_count_rsp->result);
+    count = 0;
+    status = sl_btmesh_node_get_key_count(1, &count);
+    if (status != SL_STATUS_OK) {
+        sl_app_log(">failed to get appkey count (sts = %d)\r\n", status);
         return;
     }
 
-    if (0 == key_count_rsp->count) {
+    if (count == 0) {
         // 2. Add application key
-        struct gecko_msg_mesh_test_add_local_key_rsp_t *add_key_rsp;
-        add_key_rsp = gecko_cmd_mesh_test_add_local_key(1,      //key type: appkey
-                                                        appkey, //key data
-                                                        0,      //key index
-                                                        0       //netkey index
-                                                        );
-        if (add_key_rsp->result) {
-            log(">failed to add appkey (res = %d)\r\n", add_key_rsp->result);
+        status = sl_btmesh_test_add_local_key(1,       //key type: appkey
+                                              appkey,  //key data
+                                              0,       //key index
+                                              0        //netkey index
+                                              );
+        if (status != SL_STATUS_OK) {
+            sl_app_log(">failed to add appkey (sts = %d)\r\n", status);
             return;
         }
 
@@ -229,21 +227,20 @@ void self_provisioning(void)
         vendor_model_t * p_vendor_models;
 
         // 3. Bind model
-        struct gecko_msg_mesh_test_bind_local_model_app_rsp_t *bind_model_rsp;
-        for (elem_index = 0; elem_index < MESH_CFG_MAX_ELEMENTS; ++elem_index) {
+        for (elem_index = 0; elem_index < SL_BTMESH_CONFIG_MAX_ELEMENTS; ++elem_index) {
             // SIG models
             num_models = dcd_get_sig_models(elem_index, &p_sig_models);
             for (mod_index = 0; mod_index < num_models; ++mod_index) {
-                bind_model_rsp = gecko_cmd_mesh_test_bind_local_model_app(elem_index,   //element index
-                                                                          0,            //appkey index
-                                                                          0xFFFF,       //vendor id
-                                                                          p_sig_models[mod_index].model_id  //model id
-                                                                          );
-                if (bind_model_rsp->result) {
-                    log(">failed to bind SIG model %04x (res = %d)\r\n", p_sig_models[mod_index].model_id, bind_model_rsp->result);
+                status = sl_btmesh_test_bind_local_model_app(elem_index,  //element index
+                                                             0,           //appkey index
+                                                             0xFFFF,      //vendor id
+                                                             p_sig_models[mod_index].model_id  //model id
+                                                             );
+                if (status != SL_STATUS_OK) {
+                    sl_app_log(">failed to bind SIG model %04x (sts = %d)\r\n", p_sig_models[mod_index].model_id, status);
                     break;
                 }
-                log("  bind sig model [%d] %04x\r\n", elem_index, p_sig_models[mod_index].model_id);
+                sl_app_log("  bind sig model [%d] %04x\r\n", elem_index, p_sig_models[mod_index].model_id);
             }
 
             if (mod_index < num_models) {
@@ -253,16 +250,16 @@ void self_provisioning(void)
             // Vendor models
             num_models = dcd_get_vendor_models(elem_index, &p_vendor_models);
             for (mod_index = 0; mod_index < num_models; ++mod_index) {
-                bind_model_rsp = gecko_cmd_mesh_test_bind_local_model_app(elem_index,   //element index
-                                                                          0,            //appkey index
-                                                                          p_vendor_models[mod_index].vendor_id, //vendor id
-                                                                          p_vendor_models[mod_index].model_id   //model id
-                                                                          );
-                if (bind_model_rsp->result) {
-                    log(">failed to bind vendor %04x model %04x (res = %d)\r\n", p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id, bind_model_rsp->result);
+                status = sl_btmesh_test_bind_local_model_app(elem_index,  //element index
+                                                             0,           //appkey index
+                                                             p_vendor_models[mod_index].vendor_id,  //vendor id
+                                                             p_vendor_models[mod_index].model_id    //model id
+                                                             );
+                if (status != SL_STATUS_OK) {
+                    sl_app_log(">failed to bind vendor %04x model %04x (sts = %d)\r\n", p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id, status);
                     break;
                 }
-                log("  bind vend model [%d] %04x %04x\r\n", elem_index, p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id);
+                sl_app_log("  bind vend model [%d] %04x %04x\r\n", elem_index, p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id);
             }
 
             if (mod_index < num_models) {
@@ -270,7 +267,7 @@ void self_provisioning(void)
             }
         }
 
-        if (elem_index < MESH_CFG_MAX_ELEMENTS) {
+        if (elem_index < SL_BTMESH_CONFIG_MAX_ELEMENTS) {
             return;
         }
 
@@ -283,43 +280,41 @@ void self_provisioning(void)
         uint8_t num_server_models, num_client_models;
 
         // 4. Configure publication and subscription
-        struct gecko_msg_mesh_test_set_local_model_pub_rsp_t *set_pub_rsp;
-        struct gecko_msg_mesh_test_add_local_model_sub_rsp_t *add_sub_rsp;
-        for (elem_index = 0; elem_index < MESH_CFG_MAX_ELEMENTS; ++elem_index) {
+        for (elem_index = 0; elem_index < SL_BTMESH_CONFIG_MAX_ELEMENTS; ++elem_index) {
             num_models = dcd_get_sig_models(elem_index, &p_sig_models);
             if (num_models > 0) {
                 // Server models
                 num_server_models = grp_get_server_models(p_sig_models, num_models, server_models, MAX_PUB_SUB_MODELS);
                 for (mod_index = 0; mod_index < num_server_models; ++mod_index) {
                     // Server publication
-                    set_pub_rsp = gecko_cmd_mesh_test_set_local_model_pub(elem_index,   //element index
-                                                                          0,            //appkey index
-                                                                          0xFFFF,       //vendor id
-                                                                          server_models[mod_index].model_id, //model id
-                                                                          GRP_SVR_PUB_ADDRESS,      //publication address
-                                                                          GRP_SVR_PUB_TTL,          //publication TTL
-                                                                          GRP_SVR_PUB_PERIOD,       //publication period
-                                                                          GRP_SVR_PUB_RETRANS,      //retransmission count and interval
-                                                                          GRP_SVR_PUB_CREDENTIALS   //friendship credentials flag
-                                                                          );
-                    if (set_pub_rsp->result) {
-                        log(">failed to set svr pub model %04x address %04x (res = %d)\r\n", server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS, set_pub_rsp->result);
+                    status = sl_btmesh_test_set_local_model_pub(elem_index,  //element index
+                                                                0,           //appkey index
+                                                                0xFFFF,      //vendor id
+                                                                server_models[mod_index].model_id,  //model id
+                                                                GRP_SVR_PUB_ADDRESS,     //publication address
+                                                                GRP_SVR_PUB_TTL,         //publication TTL
+                                                                GRP_SVR_PUB_PERIOD,      //publication period
+                                                                GRP_SVR_PUB_RETRANS,     //retransmission count and interval
+                                                                GRP_SVR_PUB_CREDENTIALS  //friendship credentials flag
+                                                                );
+                    if (status != SL_STATUS_OK) {
+                        sl_app_log(">failed to set svr pub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS, status);
                         break;
                     }
-                    log("  set svr pub [%d] %04x -> %04x\r\n", elem_index, server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS);
+                    sl_app_log("  set svr pub [%d] %04x -> %04x\r\n", elem_index, server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS);
 
                     // Server subscription
                     for (index = 0; index < num_svr_subs; ++index) {
-                        add_sub_rsp = gecko_cmd_mesh_test_add_local_model_sub(elem_index,           //element index
-                                                                              0xFFFF,               //vendor id
-                                                                              server_models[mod_index].model_id, //model id
-                                                                              svr_sub_list[index]   //subscription address
-                                                                              );
-                        if (add_sub_rsp->result) {
-                            log(">failed to add svr sub model %04x address %04x (res = %d)\r\n", server_models[mod_index].model_id, svr_sub_list[index], add_sub_rsp->result);
+                        status = sl_btmesh_test_add_local_model_sub(elem_index,          //element index
+                                                                    0xFFFF,              //vendor id
+                                                                    server_models[mod_index].model_id,  //model id
+                                                                    svr_sub_list[index]  //subscription address
+                                                                    );
+                        if (status != SL_STATUS_OK) {
+                            sl_app_log(">failed to add svr sub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, svr_sub_list[index], status);
                             break;
                         }
-                        log("  add svr sub [%d] %04x <- %04x\r\n", elem_index, server_models[mod_index].model_id, svr_sub_list[index]);
+                        sl_app_log("  add svr sub [%d] %04x <- %04x\r\n", elem_index, server_models[mod_index].model_id, svr_sub_list[index]);
                     }
 
                     if (index < num_svr_subs) {
@@ -335,34 +330,34 @@ void self_provisioning(void)
                 num_client_models = grp_get_client_models(p_sig_models, num_models, client_models, MAX_PUB_SUB_MODELS);
                 for (mod_index = 0; mod_index < num_client_models; ++mod_index) {
                     // Client publication
-                    set_pub_rsp = gecko_cmd_mesh_test_set_local_model_pub(elem_index,   //element index
-                                                                          0,            //appkey index
-                                                                          0xFFFF,       //vendor id
-                                                                          client_models[mod_index].model_id, //model id
-                                                                          GRP_CLI_PUB_ADDRESS,      //publication address
-                                                                          GRP_CLI_PUB_TTL,          //publication TTL
-                                                                          GRP_CLI_PUB_PERIOD,       //publication period
-                                                                          GRP_CLI_PUB_RETRANS,      //retransmission count and interval
-                                                                          GRP_CLI_PUB_CREDENTIALS   //friendship credentials flag
-                                                                          );
-                    if (set_pub_rsp->result) {
-                        log(">failed to set cli pub model %04x address %04x (res = %d)\r\n", client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS, set_pub_rsp->result);
+                    status = sl_btmesh_test_set_local_model_pub(elem_index,  //element index
+                                                                0,           //appkey index
+                                                                0xFFFF,      //vendor id
+                                                                client_models[mod_index].model_id,  //model id
+                                                                GRP_CLI_PUB_ADDRESS,     //publication address
+                                                                GRP_CLI_PUB_TTL,         //publication TTL
+                                                                GRP_CLI_PUB_PERIOD,      //publication period
+                                                                GRP_CLI_PUB_RETRANS,     //retransmission count and interval
+                                                                GRP_CLI_PUB_CREDENTIALS  //friendship credentials flag
+                                                                );
+                    if (status != SL_STATUS_OK) {
+                        sl_app_log(">failed to set cli pub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS, status);
                         break;
                     }
-                    log("  set cli pub [%d] %04x -> %04x\r\n", elem_index, client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS);
+                    sl_app_log("  set cli pub [%d] %04x -> %04x\r\n", elem_index, client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS);
 
                     // Client subscription
                     for (index = 0; index < num_cli_subs; ++index) {
-                        add_sub_rsp = gecko_cmd_mesh_test_add_local_model_sub(elem_index,           //element index
-                                                                              0xFFFF,               //vendor id
-                                                                              client_models[mod_index].model_id, //model id
-                                                                              cli_sub_list[index]   //subscription address
-                                                                              );
-                        if (add_sub_rsp->result) {
-                            log(">failed to add cli sub model %04x address %04x (res = %d)\r\n", client_models[mod_index].model_id, cli_sub_list[index], add_sub_rsp->result);
+                        status = sl_btmesh_test_add_local_model_sub(elem_index,          //element index
+                                                                    0xFFFF,              //vendor id
+                                                                    client_models[mod_index].model_id,  //model id
+                                                                    cli_sub_list[index]  //subscription address
+                                                                    );
+                        if (status != SL_STATUS_OK) {
+                            sl_app_log(">failed to add cli sub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, cli_sub_list[index], status);
                             break;
                         }
-                        log("  add cli sub [%d] %04x <- %04x\r\n", elem_index, client_models[mod_index].model_id, cli_sub_list[index]);
+                        sl_app_log("  add cli sub [%d] %04x <- %04x\r\n", elem_index, client_models[mod_index].model_id, cli_sub_list[index]);
                     }
 
                     if (index < num_cli_subs) {
@@ -376,11 +371,11 @@ void self_provisioning(void)
             }
         }
 
-        if (elem_index < MESH_CFG_MAX_ELEMENTS) {
+        if (elem_index < SL_BTMESH_CONFIG_MAX_ELEMENTS) {
             return;
         }
 
-        log(">node self configured, resetting ..\r\n");
-        gecko_cmd_system_reset(0);
+        sl_app_log(">node self configured, resetting ..\r\n");
+        sl_bt_system_reset(0);
     }
 }
