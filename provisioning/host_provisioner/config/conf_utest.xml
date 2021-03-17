@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Network>
+  <Subnets>
+    <NetKey RefId="0000" Value="03030303030303030303030303030303" Done="01" Id="0000">
+      <AppKey RefId="0000" Value="03030303030303030303030303030303" Done="01" Id="0000"/>
+    </NetKey>
+  </Subnets>
+  <Nodes>
+    <!-- 440071526 -->
+    <Node UUID="000b57b5e6072d7665447362616c6953" Addr="0001" Err="00000000" TTL="03" Features="fp" Pub="C11f" Pub_Bind="00" Blacklist="00" Done="11">
+      <Bind>00</Bind>
+      <Sub>C000</Sub>
+      <Sub>C001</Sub>
+      <Sub>C002</Sub>
+      <Sub>C003</Sub>
+      <Sub>C004</Sub>
+      <Sub>C005</Sub>
+      <Sub>C006</Sub>
+      <Sub>C007</Sub>
+      <Sub>C008</Sub>
+      <Sub>C009</Sub>
+      <Sub>C00a</Sub>
+      <Sub>C00b</Sub>
+      <Sub>C00c</Sub>
+      <Sub>C00d</Sub>
+      <Sub>C00e</Sub>
+      <Sub>C00f</Sub>
+      <Sub>C010</Sub>
+      <Sub>C011</Sub>
+      <Sub>C012</Sub>
+      <Sub>C013</Sub>
+      <Sub>C014</Sub>
+      <Sub>C015</Sub>
+      <Sub>C016</Sub>
+      <Sub>C017</Sub>
+      <Sub>C018</Sub>
+      <Sub>C019</Sub>
+      <Sub>C01a</Sub>
+      <Sub>C01b</Sub>
+      <Sub>C01c</Sub>
+      <Sub>C01d</Sub>
+      <Sub>C01e</Sub>
+      <Sub>C01f</Sub>
+    </Node>
+    <!-- ====================R3 Switches==================== -->
+    <!-- 440058927 -->
+    <Node UUID="000b57ef2b872d7665447362616c6953" Addr="0003" Err="00000000" TTL="03" Features="lp" Pub="C023" Pub_Bind="00" Blacklist="00" Done="11">
+      <Bind>00</Bind>
+      <Sub>C11f</Sub>
+    </Node>
+  </Nodes>
+</Network>

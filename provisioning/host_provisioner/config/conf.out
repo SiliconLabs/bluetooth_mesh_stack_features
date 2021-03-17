@@ -1,0 +1,6 @@
+Action_Loading_Mode:1
+Last_Conf_File:/home/zhfu/work/projs/provisioner/config/conf_new_test.xml
+Network_TX:1
+Network_TX_Interval:1
+Config_Timeout:5
+Config_Timeout_LPN:10
