@@ -60,13 +60,19 @@ The example supports both being provisioned by a standard provisioner, or being 
 Before introducing the server and client model, there are 3 concepts I want to introduce firstly. See figure 1, figure 2 and figure 3. This are the standard behaviors that the client and server models follow, which means all the opcodes defined later with the name “xxx Get/Set/Set unacknowledged” will use the “Reliable Get/Reliable Set/Unreliable Set”.
 
 ![Reliable Get Flow Chart](doc/reliable_get_flow.png)
-Figure 1. Reliable Get
+<p align="center">
+    Figure 1. Reliable Get
+</p>
 
 ![Reliable Set Flow Chart](doc/reliable_set_flow.png)
-Figure 2. Reliable Set
+<p align="center">
+    Figure 2. Reliable Set
+</p>
 
 ![Unreliable Set Flow Chart](doc/unreliable_set_flow.png)
-Figure 3. Unreliable Set
+<p align="center">
+    Figure 3. Unreliable Set
+</p>
 
 To be simple, there is only one group created and the provisioner configures both the client and server model to publish and subscribe to this group. Below are the definitions of the Client and server models
 
