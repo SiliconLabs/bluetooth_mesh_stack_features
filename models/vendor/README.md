@@ -30,8 +30,10 @@ Create the vendor server node:
 1. Create a new BT Mesh SoC Empty project called vendor_server
 2. Copy app.c and my_model_def.h from the server folder and  into the top directory of the new project
 3. Open the *.slcp file and click the "Software Components" tab. Install the following components:
+    - Application > Sensor > Relative Humidity and Temperature sensor (Mock)
+    - Application > Service > Simple timer service
     - Bluetooth Mesh > Stack Classes > Vendor Model
-    - Bluetooth Mesh > Stack Classes > Test
+    - Required if self-provisioning: Bluetooth Mesh > Stack Classes > Test
 4. In the *.slcp file, click the "Configuration Tools" tab then click "Bluetooth Mesh Configurator" to add the elements and models. (A new file should have opened)
 5. In the Main element, click the '+' sign in the Vendor Models table to add a new vendor model. Set the `Model ID to 0x1111 and the Company ID to 0x1111`. Note this is for the server node. The example source code works for these values.
 6. In app.c, change the button GPIO macro definitions if a different board is used
@@ -41,8 +43,9 @@ Create the vendor client node:
 1. Create a new BT Mesh SoC Empty project called vendor_client
 2. Copy app.c and my_model_def.h from the client folder and into the top directory of the new project
 3. Open the *.slcp file and click the "Software Components" tab. Install the following components:
+    - Application > Service > Simple timer service
     - Bluetooth Mesh > Stack Classes > Vendor Model
-    - Bluetooth Mesh > Stack Classes > Test
+    - Required if self-provisioning: Bluetooth Mesh > Stack Classes > Test
 4. In the *.slcp file, click the "Configuration Tools" tab then click "Bluetooth Mesh Configurator" to add the elements and models. (A new file should have opened)
 5. In the Main element, click the '+' sign in the Vendor Models table to add a new vendor model. Set the `Model ID to 0x2222 and the Company ID to 0x1111`. Note this is for the client node. The example source code works for these values.
 6. In app.c, change the button GPIO macro definitions if a different board is used
@@ -124,6 +127,19 @@ To be simple, there is only one group created and the provisioner configures bot
     - Server Model
         - Press PB0 – Measure the current temperature and send Temperature Status to publishing group
         - Press PB1 – Send the Unit Status to the publishing group
+
+## Running the example
+Open the serial terminals for each node. By default, the nodes will self-provision themselves. The following figures show what happens when you press `PB1 on client -> PB0 on client -> PB1 on server -> PB0 on server`.
+
+![Vendor Client Terminal](doc/vendor_client_terminal.png)
+<p align="center">
+    Figure 4. Client Serial Terminal
+</p>
+
+![Vendor Client Terminal](doc/vendor_server_terminal.png)
+<p align="center">
+    Figure 5. Server Serial Terminal
+</p>
 
 ## Special Notes
 This article doesn't aim at introducing the soc provisioner, the reason why we use it is because the Bluetooth Mesh app doesn't support configuring the vendor models yet. Some codes in the provisioner project are hardcoded to fix value so it cannot be used as a generic provisioner.
