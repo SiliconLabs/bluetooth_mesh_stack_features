@@ -155,10 +155,6 @@ static void send_hsl_request(uint8_t retrans)
 
 /*******************************************************************************
  * This function change the color HSL and sends it to the server.
- *
- * @param[in] change_percentage  Defines the color temperature percentage change,
- * possible values are  -100% - + 100%.
- *
  ******************************************************************************/
 void sl_btmesh_change_hsl(void)
 {

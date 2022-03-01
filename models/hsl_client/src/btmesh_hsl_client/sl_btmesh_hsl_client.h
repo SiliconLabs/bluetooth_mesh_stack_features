@@ -49,11 +49,6 @@
 // <i> HSL model retransmission timeout.
 #define HSL_CLIENT_RETRANSMISSION_TIMEOUT   (50)
 
-// <q HSL_CLIENT_TEMPERATURE_WRAP_ENABLED> Enable color temperature wraparound
-// <i> Default: 0
-// <i> If the color temperature reaches the max or min value then it wraps around.
-#define HSL_CLIENT_TEMPERATURE_WRAP_ENABLED   (0)
-
 // <e HSL_CLIENT_LOGGING> Enable Logging
 // <i> Default: 1
 // <i> Enable / disable Logging for HSL Client model specific messages for this component.
