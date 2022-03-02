@@ -50,7 +50,7 @@
 #include "app_log.h"
 #endif // SL_CATALOG_APP_LOG_PRESENT
 
-#include <gecko_sdk_4.0.1/app/bluetooth/common/btmesh_hsl_client/sl_btmesh_hsl_client.h>
+#include "sl_btmesh_hsl_client.h"
 
 // Warning! The app_btmesh_util shall be included after the component configuration
 // header file in order to provide the component specific logging macro.
