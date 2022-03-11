@@ -105,7 +105,7 @@ The light color finally is control by RGB setting, rgb_led_set().
 
 ### Provisioner
 There is Mesh Host Provisioner C Example for NCP mode from Bluetooth Mesh 2.2.0.
-SimplicityStudio/SDKs/gecko_sdk1/app/bluetooth/example_host/btmesh_provisioner
+SimplicityStudio/SDKs/gecko_sdk/app/bluetooth/example_host/btmesh_provisioner
 
 We can use it for provsion HSL light and switch.
 
