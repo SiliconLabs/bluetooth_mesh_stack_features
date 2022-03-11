@@ -49,7 +49,7 @@ Currently the Bluetooth Mesh - SoC Switch does not support HSL Client (i.e. cann
 
   ![Switch Config](doc/switch_config.png)
   
-3) Create btmesh_hsl_client folder(/gecko_sdk_4.0.1/app/bluetooth/common/btmesh_hsl_client), then copy provided btmesh_hsl_client.c and btmesh_hsl_client.h into the folder.
+3) Create btmesh_hsl_client folder(/gecko_sdk_4.0.2/app/bluetooth/common/btmesh_hsl_client), then copy provided btmesh_hsl_client.c and btmesh_hsl_client.h into the folder.
 
   ![Switch Copy File](doc/switch_copy_files.png)
 
