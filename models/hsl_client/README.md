@@ -4,12 +4,12 @@
 
 Lighting is BT mesh important application scenario. Here we disuss on lighting terminology and how our stack handle it.
 
-## How We Describe Color
+### How We Describe Color
 Nowadays, lighting is not only for ON/OFF. Most of light provide color setting.
 
-There are 3 primary ways to describe a color.
+There are 4 primary ways to describe a color.
 
-![Color System](doc/color_system.png)
+<img src="doc/color_system.png">
 
 - Hue, another word for color, degree on the color wheel from 0 to 360
   - 0 is red
@@ -25,35 +25,32 @@ There are 3 primary ways to describe a color.
   - 50% is neither light or dark
   - 100% is white
 
-- The 4th one is temperature, the perceived warmth or coolness of a color, measured in degrees Kelvin (K)
-  ![Color Temperature](doc/color_temperature.png)
+- Temperature, the perceived warmth or coolness of a color, measured in degrees Kelvin (K)
 
-## Project Setup
-### Gecko SDK Version
-Bluetooth Mesh 2.2.1 or later
-### Hardware Required
-Wireless STK Mainboard and EFR32xG21 Radio Board.
+  <img src="doc/color_temperature.png" width="488" height="526">
 
-Thunderboard Sense 2, need the RGB LED.
 ### HSL Control Topolog
 ![HSL](doc/hsl_topo.png)
+
 The Bluetooth Mesh - SoC Light HSL example is a working example application that you can use as a template for Bluetooth Mesh HSL Light applications.
 
-Currently the Bluetooth Mesh - SoC Switch does not support HSL Client (i.e. cannot set hue or saturation). So switch side needs some porting job.
-### HSL Switch
-1) Create "Bluetooth Mesh - SoC Switch", the HW here we use xG21(BRD4181A), add HSL client model.
+Currently the Bluetooth Mesh - SoC Switch does not support HSL Client (i.e. cannot set hue or saturation). So switch side needs some porting job.  
 
-  ![Switch Project](doc/switch_project.png)
+## Project Setup
+### HSL Switch
+1) Create "Bluetooth Mesh - SoC Switch", add HSL client model. The example can run on EFR32 boards which support BT mesh, the provided project file is based on xG21(BRD4181A).
+
+  <img src="doc/switch_project.png" width="1310" height="658">
 
 2) Check SL_BTMESH_GENERIC_HSL_CLIENT_INIT_CFG_VAL on sl_btmesh_generic_base_config.h, if not set then set it.
 
-  ![Switch Config](doc/switch_config.png)
+  <img src="doc/switch_config.png" width="672" height="705">
   
-3) Create btmesh_hsl_client folder(/gecko_sdk_4.0.2/app/bluetooth/common/btmesh_hsl_client), then copy provided btmesh_hsl_client.c and btmesh_hsl_client.h into the folder.
+3) Create btmesh_hsl_client folder(/gecko_sdk_4.0.x/app/bluetooth/common/btmesh_hsl_client), then copy provided btmesh_hsl_client.c and btmesh_hsl_client.h into the folder.
 
-  ![Switch Copy File](doc/switch_copy_files.png)
+  <img src="doc/switch_copy_files.png" width="380" height="348">
 
-  Configure the publish parameter as below, test code set 7 HSL combination data to show color changing.
+Configure the publish parameter as below, test code set 7 HSL combination data to show color changing.
   ```c
   void sl_btmesh_set_hsl(uint8_t new_hsl)
   {
@@ -94,21 +91,32 @@ Currently the Bluetooth Mesh - SoC Switch does not support HSL Client (i.e. cann
   ```
 
 4) Replace app.c file, invoke sl_btmesh_change_hsl() in app_button_press_cb()
-  ![Switch Replace File](doc/switch_replace_file.png)
+<img src="doc/switch_replace_file.png" width="1356" height="1110">
+
+## Testing
+### Gecko SDK Version
+Test on Bluetooth Mesh 2.2.x
+
+### Hardware Required
+- Wireless STK Mainboard and EFR32xG21 Radio Board.
+- Thunderboard Sense 2, it has RGB LED, better for showing the color.
+
+### HSL Switch
+Import the project file SimplicityStudio/soc_btmesh_switch_HSL.sls, should be good way to setup the testing.
 
 ### HSL Light
 Use default Simplicity Studio "Bluetooth Mesh - SoC HSL Light" is OK.
 For checking the color change according to HSL client, the recommend HW is Thunderboard Sense 2(BRD4166A).
 The light color finally is control by RGB setting, rgb_led_set().
 
-  ![Light HSL RGB](doc/light_hsl_rgb.png)
+  <img src="doc/light_hsl_rgb.png">
 
 ### Provisioner
-There is Mesh Host Provisioner C Example for NCP mode from Bluetooth Mesh 2.2.0.
+There is Mesh Host Provisioner C Example for NCP mode in Bluetooth Mesh 2.2.x.
 SimplicityStudio/SDKs/gecko_sdk/app/bluetooth/example_host/btmesh_provisioner
 
-We can use it for provsion HSL light and switch.
+Can be use for provsion HSL light and switch.
 
 ### Test Log
 Each key press on button 0 will send HSL client control message, then the light will change the color accordingly.
-  ![Test Log](doc/test_log.png)
+  <img src="doc/test_log.png">
