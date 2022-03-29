@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NOTE: ALL Value below is ***HEX***, e.g. 020baadd stands for 0x020baadd, -->
+<!-- Any DEC Value will be parsed as ***HEX*** in the source code -->
+<!-- Features: r - relay | l - lpn | f - friend | p - proxy -->
+<!-- trans: [1, 8] - send each packet for 1-8 time(s) -->
+<!-- tran_interval: [1, 32] * 10ms - interval between each transmission -->
+<Network>
+  <!-- Netkey and all AppKeys bound to it -->
+  <Subnets>
+    <NetKey RefId="0000" Id="0000" Value="03030303030303030303030303030303" Done="00">
+      <AppKey RefId="0000" Id="0000" Value="03030303030303030303030303030303" Done="00"/>
+    </NetKey>
+  </Subnets>
+  <!-- All Nodes -->
+  <!-- Features: r - relay | l - lpn | f - friend | p - proxy -->
+  <Nodes>
+    <!-- Server -->
+    <!-- 58927 -->
+    <Node UUID="000b57ef2b872d7665447362616c6953" Addr="0000" Err="00000000" Tmpl="50" Blacklist="00" Done="00"/>
+    <!-- Client -->
+    <!-- 71526 -->
+    <Node UUID="000b57b5e6072d7665447362616c6953" Addr="0000" Err="00000000" Tmpl="51" Blacklist="00" Done="00"/>
+  </Nodes>
+</Network>
