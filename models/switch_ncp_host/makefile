@@ -86,9 +86,15 @@ AR      = ar
 
 INCLUDEPATHS += \
 -I./common/uart \
+<<<<<<< HEAD
+-I$(SDK_DIR)/platform/common/inc \
+-I$(SDK_DIR)/protocol/bluetooth/inc \
+-I$(SDK_DIR)/protocol/bluetooth/src \
+=======
 -I$(SDK_DIR)/protocol/bluetooth/bt_mesh/inc/common \
 -I$(SDK_DIR)/protocol/bluetooth/ble_stack/inc/host \
 -I$(SDK_DIR)/protocol/bluetooth/bt_mesh/inc \
+>>>>>>> main
 -I./
 
 # -MMD : Don't generate dependencies on system header files.
@@ -142,9 +148,15 @@ override LDFLAGS +=
 ####################################################################
 
 C_SRC +=  \
+<<<<<<< HEAD
+$(SDK_DIR)/protocol/bluetooth/src/sl_btmesh_lib.c \
+$(SDK_DIR)/protocol/bluetooth/src/sl_bt_ncp_host_api.c\
+$(SDK_DIR)/protocol/bluetooth/src/sl_bt_ncp_host.c\
+=======
 $(SDK_DIR)/protocol/bluetooth/ble_stack/src/host/gecko_bglib.c \
 $(SDK_DIR)/protocol/bluetooth/bt_mesh/src/mesh_lib.c \
 $(SDK_DIR)/protocol/bluetooth/bt_mesh/src/mesh_serdeser.c \
+>>>>>>> main
 main.c \
 app.c
 
