@@ -3,7 +3,7 @@
  * @brief Core application logic for the vendor server node.
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -49,44 +49,43 @@
 
 #include "my_model_def.h"
 
-
 #ifdef PROV_LOCALLY
-/// Group Addresses
-/// Choose any 16-bit address starting at 0xC000
-#define CUSTOM_STATUS_GRP_ADDR        0xC001  // Server PUB address
-#define CUSTOM_CTRL_GRP_ADDR          0xC002  // Server SUB address
+// Group Addresses
+// Choose any 16-bit address starting at 0xC000
+#define CUSTOM_STATUS_GRP_ADDR                      0xC001  // Server PUB address
+#define CUSTOM_CTRL_GRP_ADDR                        0xC002  // Server SUB address
 
-/// The default settings of the network and the node
-#define NET_KEY_IDX                 0
-#define APP_KEY_IDX                 0
-#define IVI                         0
-#define DEFAULT_TTL                 5
-/// #define ELEMENT_ID
+// The default settings of the network and the node
+#define NET_KEY_IDX                                 0
+#define APP_KEY_IDX                                 0
+#define IVI                                         0
+#define DEFAULT_TTL                                 5
+// #define ELEMENT_ID
 #endif // #ifdef PROV_LOCALLY
 
-/// Buttons
-/// Change depending on board. Check the board's User Guide for buttons pinouts
-#define BUTTON0_PORT      gpioPortB
-#define BUTTON0_PIN       0
-#define BUTTON1_PORT      gpioPortB
-#define BUTTON1_PIN       1
+// Buttons
+// Change depending on board. Check the board's User Guide for buttons pinouts
+#define BUTTON0_PORT                                gpioPortB
+#define BUTTON0_PIN                                 0
+#define BUTTON1_PORT                                gpioPortB
+#define BUTTON1_PIN                                 1
 
-#define EX_B0_PRESS                ((1) << 5)
-#define EX_B1_PRESS                ((1) << 6)
+#define EX_B0_PRESS                                 ((1) << 5)
+#define EX_B1_PRESS                                 ((1) << 6)
 
-/// Timing
-/// Check section 4.2.2.2 of Mesh Profile Specification 1.0 for format
-#define STEP_RES_100_MILLI               0
-#define STEP_RES_1_SEC                   ((1) << 6)
-#define STEP_RES_10_SEC                  ((2) << 6)
-#define STEP_RES_10_MIN                  ((3) << 6)
+// Timing
+// Check section 4.2.2.2 of Mesh Profile Specification 1.0 for format
+#define STEP_RES_100_MILLI                          0
+#define STEP_RES_1_SEC                              ((1) << 6)
+#define STEP_RES_10_SEC                             ((2) << 6)
+#define STEP_RES_10_MIN                             ((3) << 6)
 
-#define STEP_RES_BIT_MASK                0xC0
+#define STEP_RES_BIT_MASK                           0xC0
 
 /// Advertising Provisioning Bearer
-#define PB_ADV                         0x1
+#define PB_ADV                                      0x1
 /// GATT Provisioning Bearer
-#define PB_GATT                        0x2
+#define PB_GATT                                     0x2
 
 static uint8_t temperature[TEMP_DATA_LENGTH] = {0, 0, 0, 0};
 static unit_t unit[UNIT_DATA_LENGTH] = {
@@ -182,6 +181,7 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
     // Handle Button Presses
     case sl_bt_evt_system_external_signal_id: {
       uint8_t opcode = 0, length = 0, *data = NULL;
+      // check if external signal triggered by button 0 press
       if(evt->data.evt_system_external_signal.extsignals & EX_B0_PRESS) {
           read_temperature();
           opcode = temperature_status;
@@ -189,13 +189,14 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
           data = temperature;
           app_log("B0 Pressed.\r\n");
       }
+      // check if external signal triggered by button 1 press
       if(evt->data.evt_system_external_signal.extsignals & EX_B1_PRESS) {
           opcode = unit_status;
           length = UNIT_DATA_LENGTH;
           data = unit;
           app_log("B1 Pressed.\r\n");
       }
-
+      // set the vendor model publication message
       sc = sl_btmesh_vendor_model_set_publication(my_model.elem_index,
                                                   my_model.vendor_id,
                                                   my_model.model_id,
@@ -205,6 +206,7 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
           app_log("Set publication error: 0x%04X\r\n", sc);
       } else {
           app_log("Set publication done. Publishing...\r\n");
+          // publish the vendor model publication message
           sc = sl_btmesh_vendor_model_publish(my_model.elem_index,
                                               my_model.vendor_id,
                                               my_model.model_id);

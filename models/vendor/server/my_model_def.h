@@ -3,7 +3,7 @@
  * @brief Vendor model definitions
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -37,6 +37,7 @@
 #ifndef MY_MODEL_DEF_H_
 #define MY_MODEL_DEF_H_
 
+// provisioning locally
 #define PROV_LOCALLY
 
 #define PRIMARY_ELEMENT                 0

@@ -50,50 +50,50 @@
 #include "my_model_def.h"
 
 #ifdef PROV_LOCALLY
-/// Group Addresses
-/// Choose any 16-bit address starting at 0xC000
-#define CUSTOM_STATUS_GRP_ADDR        0xC001  // Server PUB address
-#define CUSTOM_CTRL_GRP_ADDR          0xC002  // Server SUB address
+// Group Addresses
+// Choose any 16-bit address starting at 0xC000
+#define CUSTOM_STATUS_GRP_ADDR                      0xC001  // Server PUB address
+#define CUSTOM_CTRL_GRP_ADDR                        0xC002  // Server SUB address
 
-/// The default settings of the network and the node
-#define NET_KEY_IDX                 0
-#define APP_KEY_IDX                 0
-#define IVI                         0
-#define DEFAULT_TTL                 5
-/// #define ELEMENT_ID
+// The default settings of the network and the node
+#define NET_KEY_IDX                                 0
+#define APP_KEY_IDX                                 0
+#define IVI                                         0
+#define DEFAULT_TTL                                 5
+// #define ELEMENT_ID
 #endif // #ifdef PROV_LOCALLY
 
-/// Buttons
-/// Change depending on board. Check the board's User Guide for buttons pinouts
-#define BUTTON0_PORT      gpioPortB
-#define BUTTON0_PIN       0
-#define BUTTON1_PORT      gpioPortB
-#define BUTTON1_PIN       1
+// Buttons
+// Change depending on board. Check the board's User Guide for buttons pinouts
+#define BUTTON0_PORT                                gpioPortB
+#define BUTTON0_PIN                                 0
+#define BUTTON1_PORT                                gpioPortB
+#define BUTTON1_PIN                                 1
 
-#define EX_B0_PRESS                ((1) << 5)
-#define EX_B0_LONG_PRESS           ((1) << 6)
-#define EX_B1_PRESS                ((1) << 7)
-#define EX_B1_LONG_PRESS           ((1) << 8)
+#define EX_B0_PRESS                                 ((1) << 5)
+#define EX_B0_LONG_PRESS                            ((1) << 6)
+#define EX_B1_PRESS                                 ((1) << 7)
+#define EX_B1_LONG_PRESS                            ((1) << 8)
 
-/// Timing
-/// Check section 4.2.2.2 of Mesh Profile Specification 1.0 for format
-#define STEP_RES_100_MILLI               0
-#define STEP_RES_1_SEC                   ((1) << 6)
-#define STEP_RES_10_SEC                  ((2) << 6)
-#define STEP_RES_10_MIN                  ((3) << 6)
+// Timing
+// Check section 4.2.2.2 of Mesh Profile Specification 1.0 for format
+#define STEP_RES_100_MILLI                          0
+#define STEP_RES_1_SEC                              ((1) << 6)
+#define STEP_RES_10_SEC                             ((2) << 6)
+#define STEP_RES_10_MIN                             ((3) << 6)
 
-#define STEP_RES_BIT_MASK                0xC0
+#define STEP_RES_BIT_MASK                           0xC0
 
 // Max x is 63
-#define SET_100_MILLI(x)            (uint8_t)(STEP_RES_100_MILLI | ((x) & (0x3F)))
-#define SET_1_SEC(x)                (uint8_t)(STEP_RES_1_SEC | ((x) & (0x3F)))
-#define SET_10_SEC(x)               (uint8_t)(STEP_RES_10_SEC | ((x) & (0x3F)))
-#define SET_10_MIN(x)               (uint8_t)(STEP_RES_10_MIN | ((x) & (0x3F)))
+#define SET_100_MILLI(x)                            (uint8_t)(STEP_RES_100_MILLI | ((x) & (0x3F)))
+#define SET_1_SEC(x)                                (uint8_t)(STEP_RES_1_SEC | ((x) & (0x3F)))
+#define SET_10_SEC(x)                               (uint8_t)(STEP_RES_10_SEC | ((x) & (0x3F)))
+#define SET_10_MIN(x)                               (uint8_t)(STEP_RES_10_MIN | ((x) & (0x3F)))
 
-/// Advertising Provisioning Bearer
-#define PB_ADV                         0x1
-/// GATT Provisioning Bearer
-#define PB_GATT                        0x2
+// Advertising Provisioning Bearer
+#define PB_ADV                                      0x1
+// GATT Provisioning Bearer
+#define PB_GATT                                     0x2
 
 
 uint8_t conn_handle = 0xFF;

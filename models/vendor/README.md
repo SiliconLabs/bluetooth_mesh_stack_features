@@ -28,7 +28,7 @@ At least 3 Bluetooth Mesh compatible boards. The following parts are what we rec
 ### Vendor server node
 Create the vendor server node:
 1. Create a new BT Mesh SoC Empty project called vendor_server
-2. Copy app.c and my_model_def.h from the server folder and  into the top directory of the new project
+2. Copy [app.c](server/app.c) and [my_model_def.h](server/my_model_def.h) from the [server folder](server) and into the top directory of the new project
 3. Open the *.slcp file and click the "Software Components" tab. Install the following components:
     - Application > Sensor > Relative Humidity and Temperature sensor (Mock)
     - Application > Service > Simple timer service
@@ -36,19 +36,19 @@ Create the vendor server node:
     - Required if self-provisioning: Bluetooth Mesh > Stack Classes > Test
 4. In the *.slcp file, click the "Configuration Tools" tab then click "Bluetooth Mesh Configurator" to add the elements and models. (A new file should have opened)
 5. In the Main element, click the '+' sign in the Vendor Models table to add a new vendor model. Set the `Model ID to 0x1111 and the Company ID to 0x1111`. Note this is for the server node. The example source code works for these values.
-6. In app.c, change the button GPIO macro definitions if a different board is used
+6. In [app.c](server/app.c), change the button GPIO macro definitions if a different board is used
 
 ### Vendor client node
 Create the vendor client node:
 1. Create a new BT Mesh SoC Empty project called vendor_client
-2. Copy app.c and my_model_def.h from the client folder and into the top directory of the new project
+2. Copy [app.c](client/app.c) and [my_model_def.h](client/my_model_def.h) from the [client folder](client) and into the top directory of the new project
 3. Open the *.slcp file and click the "Software Components" tab. Install the following components:
     - Application > Service > Simple timer service
     - Bluetooth Mesh > Stack Classes > Vendor Model
     - Required if self-provisioning: Bluetooth Mesh > Stack Classes > Test
 4. In the *.slcp file, click the "Configuration Tools" tab then click "Bluetooth Mesh Configurator" to add the elements and models. (A new file should have opened)
 5. In the Main element, click the '+' sign in the Vendor Models table to add a new vendor model. Set the `Model ID to 0x2222 and the Company ID to 0x1111`. Note this is for the client node. The example source code works for these values.
-6. In app.c, change the button GPIO macro definitions if a different board is used
+6. In [app.c](client/app.c), change the button GPIO macro definitions if a different board is used
 
 ### Provisioner
 This article does not go in depth about the provisioner. By default, the nodes are self-provisioned. To prevent the nodes from self-provision themselves, comment out the `#define PROV_LOCALLY` definition in my_model_def.h.
