@@ -1,4 +1,4 @@
-# Vendor Specifc Model Example
+# Vendor Specific Model Example
 
 ## Details
 ### Introduction
