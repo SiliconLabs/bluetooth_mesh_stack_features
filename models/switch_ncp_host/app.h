@@ -12,7 +12,7 @@
 #include <string.h>
 
 #ifndef DEBUG_ON
-#define DEBUG_ON                                    0
+#define DEBUG_ON                                    1
 #endif
 
 #define OUTPUT_PREFIX                               "> "
@@ -21,28 +21,6 @@
 
 #define BASE_DEC                                    0
 #define BASE_HEX                                    1
-
-#if (DEBUG_ON == 1)
-#define dbgPrint(__fmt, ...)                 \
-  do {                                       \
-    printf(DBG_PREFIX __fmt, ##__VA_ARGS__); \
-    fflush(stdout);                          \
-  } while (0)
-
-#else
-#define dbgPrint(...)
-#endif
-
-#define CS_OUTPUT(__fmt, ...)                   \
-  do {                                          \
-    printf(OUTPUT_PREFIX __fmt, ##__VA_ARGS__); \
-    fflush(stdout);                             \
-  } while (0)
-
-#define CS_ERROR(__fmt, ...)                      \
-  do {                                            \
-    CS_OUTPUT(ERROR_PREFIX __fmt, ##__VA_ARGS__); \
-  } while (0)
 
 typedef int (*pPrmCheckAndExecCB_t)(int argc,
                                     const char *argv[]);
@@ -69,4 +47,29 @@ void *pConsoleThread(void *pIn);
 void *pAppMainThread(void *pIn);
 void on_message_send(uint32_t msg_len,
                      uint8_t* msg_data);
+void timerHandle(int handle);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**************************************************************************//**
+ * Application Init.
+ *****************************************************************************/
+void app_init(int argc, char *argv[]);
+
+/**************************************************************************//**
+ * Application Process Action.
+ *****************************************************************************/
+void app_process_action(void);
+
+/**************************************************************************//**
+ * Application Deinit.
+ *****************************************************************************/
+void app_deinit(void);
+
+#ifdef __cplusplus
+};
+#endif
+
 #endif

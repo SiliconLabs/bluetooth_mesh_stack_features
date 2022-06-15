@@ -12,15 +12,33 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include <signal.h>
 
+#include "sl_bt_api.h"
 #include "sl_btmesh_api.h"
 #include "sl_btmesh_generic_model_capi_types.h"
 #include "sl_btmesh_lighting_model_capi_types.h"
 #include "sl_btmesh_lib.h"
 #include "sl_bt_types.h"
 #include "app.h"
-#include "uart.h"
+#include "app_log.h"
+#include "app_assert.h"
+#include "sl_btmesh_ncp_host.h"
+#include "ncp_host.h"
 #include "sl_bt_ncp_host.h"
+#include "utils/timer.h"
+
+// Optstring argument for getopt.
+#define OPTSTRING      NCP_HOST_OPTSTRING "h"
+
+// Usage info.
+#define USAGE          "\r\n%s " NCP_HOST_USAGE " [-h]\r\n"
+
+// Options info.
+#define OPTIONS    \
+  "\r\nOPTIONS\r\n"    \
+  NCP_HOST_OPTIONS \
+  "    -h  Print this help message.\r\n"
 
 /* Defines  *********************************************************** */
 #define SPLIT_TOKENS                            "\t\r\n\a "
@@ -51,6 +69,10 @@
 #define TIMER_CLK_FREQ ((uint32_t)32768)
 /// Convert miliseconds to timer ticks
 #define TIMER_MS_2_TIMERTICK(ms) ((TIMER_CLK_FREQ * ms) / 1000)
+
+#define SL_BTMESH_GENERIC_BASE_REGISTRY_INIT_SIZE 0
+#define SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL 3
+
 /* Static Variables *************************************************** */
 BGLIB_DEFINE();
 
@@ -61,7 +83,6 @@ enum {
   ctlReq
 };
 
-static pthread_t synchronizeThreadId;
 static pthread_mutex_t commandBufMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t syncFlagMetex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -88,14 +109,13 @@ static uint16_t temperature_level = 0;
 static uint8_t request_count;
 static int operation = noneReq;
 
+static pthread_t consoleThreadId, appMainThreadId;
+
 /* Global Variables *************************************************** */
 
 /* Static Functions Declaractions ************************************* */
 static int getCMD(void);
 static int execCMD(void);
-static void ncpEvtHandlerForBLE(void);
-static void ncpEvtHandlerForMesh(void);
-static void *pSyncThread(void *pIn);
 
 void send_onoff_request(int retrans);
 void send_lightness_request(int retrans);
@@ -182,9 +202,23 @@ static inline void resetSwitchVariables(void)
   temperature_level = 0;
 }
 
+void initiate_factory_reset(int type)
+{
+  if (conn_handle != 0xFF) {
+    sl_bt_connection_close(conn_handle);
+  }
+
+  if (type) {
+    sl_bt_nvm_erase_all();
+    sleep(1);
+  }
+}
+
 void switch_node_init(void)
 {
-  mesh_lib_init(malloc, free, 8);
+  app_log("Mesh lib init\r\n");
+  mesh_lib_init(SL_BTMESH_GENERIC_BASE_REGISTRY_INIT_SIZE, SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL);
+  app_log("Mesh lib init done\r\n");
 }
 
 /***************************************************************************//**
@@ -203,11 +237,11 @@ void lpn_init(void)
   // Initialize LPN functionality.
   result = sl_btmesh_lpn_init();
   if (result) {
-    CS_OUTPUT("LPN init failed (0x%x)\r\n", result);
+    app_log("LPN init failed (0x%x)\r\n", result);
     return;
   }
   lpn_active = 1;
-  CS_OUTPUT("LPN initialized\r\n");
+  app_log("LPN initialized\r\n");
 
   // Configure the lpn with following parameters:
   // - Minimum friend queue length = 2
@@ -216,22 +250,24 @@ void lpn_init(void)
   // Configure LPN minimum friend queue length
   result = sl_btmesh_lpn_config(0, 2);
   if (result) {
-    CS_OUTPUT("LPN queue configuration failed (0x%lx)\r\n", result);
+    app_log("LPN queue configuration failed (0x%lx)\r\n", result);
     return;
   }
 
   // Configure LPN poll timeout
   result = sl_btmesh_lpn_config(1, 5 * 1000);
   if (result) {
-    CS_OUTPUT("LPN poll timeout configuration failed (0x%lx)\r\n", result);
+    app_log("LPN poll timeout configuration failed (0x%lx)\r\n", result);
     return;
   }
 
-  CS_OUTPUT("trying to find friend...\r\n");
+  app_log("Trying to find friend...\r\n");
   result = sl_btmesh_lpn_establish_friendship(0);
+  app_log("Firendifriend\r\n");
+
 
   if (result != 0) {
-    CS_OUTPUT("ret.code %x\r\n", result);
+    app_log("ret.code %x\r\n", result);
   }
 }
 
@@ -246,369 +282,380 @@ void lpn_deinit(void)
     return; // lpn feature is currently inactive
   }
 
-  result = sl_bt_system_set_soft_timer(0, // cancel friend finding timer
-                                             TIMER_ID_FRIEND_FIND,
-                                             1);
+  result = startTimer(0, TIMER_ID_FRIEND_FIND);
 
   // Terminate friendship if exist
   result = sl_btmesh_lpn_terminate_friendship(0);
   if (result) {
-    CS_OUTPUT("Friendship termination failed (0x%x)\r\n", result);
+    app_log("Friendship termination failed (0x%x)\r\n", result);
   }
   // turn off lpn feature
   result = sl_btmesh_lpn_deinit();
   if (result) {
-    CS_OUTPUT("LPN deinit failed (0x%x)\r\n", result);
+    app_log("LPN deinit failed (0x%x)\r\n", result);
   }
   lpn_active = 0;
-  CS_OUTPUT("LPN deinitialized\r\n");
-}
-
-static void appMainInit(void)
-{
-  resetSwitchVariables();
-  /**
-   * Initialize BGLIB with our output function for sending messages.
-   */
-   //changed
-  SL_BT_API_INITIALIZE_NONBLOCK(on_message_send, uartRx, uartRxPeek);
-
-  if (-1 == pthread_create(&synchronizeThreadId,
-                           NULL,
-                           pSyncThread,
-                           NULL)) {
-    perror("Error creating sync thread.\n");
-    exit(1);
-  }
+  app_log("LPN deinitialized\r\n");
 }
 
 void *pConsoleThread(void *pIn)
 {
   consoleInit();
   for (;;) {
-    CS_OUTPUT("$ ");
+    app_log("$ ");
     getCMD();
     usleep(80 * 1000);
+    //app_log("Queue %d\r\n", isTimerElapsed());
   }
   return NULL;
 }
 
 void *pAppMainThread(void *pIn)
 {
-  appMainInit();
   for (;;) {
+    //app_log("Test");
     execCMD();
-    ncpEvtHandlerForBLE();
-	  ncpEvtHandlerForMesh();
-  }
+    if(isTimerElapsed()) {
+      timerHandle(getElapsedTimer());
+    }
+  };
+
   return NULL;
 }
 
-static void *pSyncThread(void *pIn)
-{
-  sl_bt_msg_t evt;
-  sl_bt_msg_t *p = &evt;
-  pthread_detach(pthread_self());
-
-  CS_OUTPUT("Syncing");
-
-  do {
-    CS_OUTPUT("."); fflush(stdout);
-
-    sl_bt_pop_event(&evt);
-    if (p) {
-      switch (SL_BT_MSG_ID(p->header)) {
-        case sl_bt_evt_system_boot_id:
-        {
-          CS_OUTPUT("System booted. NCP target sync up\n");
-          // Initialize Mesh stack in Node operation mode, it will generate initialized event
-          uint16_t result = sl_btmesh_node_init();
-          if (result) {
-            CS_ERROR("init failed (0x%x)", result);
-            exit(1);
-          }
-          pthread_mutex_lock(&syncFlagMetex);
-          hostTargetSynchronized = true;
-          pthread_mutex_unlock(&syncFlagMetex);
-        }
-        break;
+void timerHandle(int handle) {
+  app_log("Timerhandle %d\r\n", handle);
+  uint16_t result = 0;
+  switch (handle) {
+    case TIMER_ID_RETRANS:
+      app_log("operation %d\r\n", operation);
+      switch (operation) {
+        case onoffReq:
+          send_onoff_request(1); // param 1 indicates that this is a retransmission
+          break;
+        case lightnessReq:
+          send_lightness_request(1); // param 1 indicates that this is a retransmission
+          break;
+        case ctlReq:
+          send_ctl_request(1); // param 1 indicates that this is a retransmission
+          break;
         default:
-          CS_OUTPUT("Unexpected event [ID:%08x]\n", SL_BT_MSG_ID(p->header));
           break;
       }
-    } else {
-      sl_bt_system_reset(0);
-      sleep(1);
-    }
-
-    if (hostTargetSynchronized) {
-      break;
-    }
-  } while (1);
-
-  pthread_exit(NULL);
-  return NULL;
-}
-
-static void initiate_factory_reset(int type)
-{
-  if (conn_handle != 0xFF) {
-    sl_bt_connection_close(conn_handle);
-  }
-
-  if (type) {
-    sl_bt_nvm_erase_all();
-    sleep(1);
-  }
-
-  appMainInit();
-}
-
-static void ncpEvtHandlerForBLE(void)
-{
-  //struct gecko_cmd_packet *evt = NULL;
-  sl_bt_msg_t *evt = NULL;
-  uint16_t result = 0;
-
-  if (!hostTargetSynchronized) {
-    return;
-  }
-  do {
-    if (sl_bt_pop_event(evt)) {
-      return;
-    }
-
-    switch (SL_BT_MSG_ID(evt->header)) {
-      case sl_bt_evt_system_boot_id:
-      {
-        CS_OUTPUT("Target reset autonomously, boot\n");
-        resetSwitchVariables();
-        // Initialize Mesh stack in Node operation mode, it will generate initialized event
-        result = sl_btmesh_node_init();
-        if (result) {
-          CS_ERROR("init failed (0x%x)", result);
-          exit(1);
-        }
-        return;
+      // stop retransmission timer if it was the last attempt
+        app_log("ret.code %d\r\n", request_count);
+      if (request_count == 0) {
+        startTimer(0, TIMER_ID_RETRANS);
       }
       break;
-	  
-      case sl_bt_evt_system_soft_timer_id:
-        /* CS_OUTPUT("soft_timer\n"); */
-        switch (evt->data.evt_system_soft_timer.handle) {
-          case TIMER_ID_RETRANS:
-            switch (operation) {
-              case onoffReq:
-                send_onoff_request(1); // param 1 indicates that this is a retransmission
-                break;
-              case lightnessReq:
-                send_lightness_request(1); // param 1 indicates that this is a retransmission
-                break;
-              case ctlReq:
-                send_ctl_request(1); // param 1 indicates that this is a retransmission
-                break;
-              default:
-                break;
-            }
-            // stop retransmission timer if it was the last attempt
-            if (request_count == 0) {
-              sl_bt_system_set_soft_timer(0, TIMER_ID_RETRANS, 0);
-            }
-            break;
 
-          case TIMER_ID_NODE_CONFIGURED:
-            if (!lpn_active) {
-              CS_OUTPUT("try to initialize lpn...\r\n");
-              lpn_init();
-            }
-            break;
+    case TIMER_ID_NODE_CONFIGURED:
+      if (!lpn_active) {
+        app_log("Trying to initialize lpn...\r\n");
+        lpn_init();
+      }
+      break;
 
-          case TIMER_ID_FRIEND_FIND:
-          {
-            CS_OUTPUT("trying to find friend...\r\n");
-            result = sl_btmesh_lpn_establish_friendship(0);
+    case TIMER_ID_FRIEND_FIND:
+    {
+      app_log("Trying to find friend...\r\n");
+      result = sl_btmesh_lpn_establish_friendship(0);
 
-            if (result != 0) {
-              CS_OUTPUT("ret.code %x\r\n", result);
-            }
-          }
-          break;
+      if (result != 0) {
+        app_log("ret.code %x\r\n", result);
+      }
+    }
+    break;
 
-          default:
-            break;
-        }
+    default:
+      break;
+  }
+}
 
-        break;
+void app_init(int argc, char *argv[])
+{
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application init code here!                         //
+  // This is called once during start-up.                                    //
+  /////////////////////////////////////////////////////////////////////////////
+  sl_status_t sc;
+  int opt;
 
-      case sl_bt_evt_connection_opened_id:
-        CS_OUTPUT("evt:sl_bt_evt_connection_opened_id\r\n");
-        num_connections++;
-        conn_handle = evt->data.evt_connection_opened.connection;
+  // Process command line options.
+  while ((opt = getopt(argc, argv, OPTSTRING)) != -1) {
+    switch (opt) {
+      // Print help.
+      case 'h':
+        app_log(USAGE, argv[0]);
+        app_log(OPTIONS);
+        exit(EXIT_SUCCESS);
 
-        // turn off lpn feature after GATT connection is opened
-        lpn_deinit();
-        break;
-
-      case sl_bt_evt_connection_closed_id:
-        CS_OUTPUT("evt:conn closed, reason 0x%x\r\n", evt->data.evt_connection_closed.reason);
-        conn_handle = 0xFF;
-        if (num_connections > 0) {
-          if (--num_connections == 0) {
-            // initialize lpn when there is no active connection
-            lpn_init();
-          }
-        }
-        break;
-
-      case sl_bt_evt_connection_parameters_id:
-        CS_OUTPUT("connection params: interval %d, timeout %d\r\n",
-                  evt->data.evt_connection_parameters.interval,
-                  evt->data.evt_connection_parameters.timeout);
-        break;
-
-      case sl_bt_evt_advertiser_timeout_id:
-        // these events silently discarded
-        break;
-
+      // Process options for other modules.
       default:
-        dbgPrint("Unhandled event [0x%08x]\n",
-                 BGLIB_MSG_ID(evt->header));
+        sc = ncp_host_set_option((char)opt, optarg);
+        if (sc != SL_STATUS_OK) {
+          app_log(USAGE, argv[0]);
+          exit(EXIT_FAILURE);
+        }
         break;
     }
-  } while (evt);
+  }
+
+  resetSwitchVariables();
+  // Initialize NCP connection.
+  sc = ncp_host_init();
+  if (sc == SL_STATUS_INVALID_PARAMETER) {
+    app_log(USAGE, argv[0]);
+    exit(EXIT_FAILURE);
+  }
+  app_assert_status(sc);
+
+  SL_BTMESH_API_REGISTER();
+
+  app_log("Empty NCP-host initialised.\r\n");
+  app_log("Resetting NCP...\r\n");
+  // Reset NCP to ensure it gets into a defined state.
+  // Once the chip successfully boots, boot event should be received.
+  sl_bt_system_reset(sl_bt_system_boot_mode_normal);
+
+  if (-1 == pthread_create(&consoleThreadId,
+                            NULL,
+                            pConsoleThread,
+                            NULL)) {
+     perror("Error creating console thread.\r\n");
+     exit(1);
+  }
+
+
+  if (-1 == pthread_create(&appMainThreadId,
+                           NULL,
+                           pAppMainThread,
+                           NULL)) {
+    perror("Error creating App Main thread.\n");
+    exit(1);
+  }
+
+  //startTimer(20, TIMER_ID_RETRANS);
 }
 
-static void ncpEvtHandlerForMesh(void)
+/**************************************************************************//**
+ * Application Process Action.
+ *****************************************************************************/
+void app_process_action(void)
 {
-  //struct gecko_cmd_packet *evt = NULL;
-  sl_btmesh_msg_t *evt = NULL;
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application code here!                              //
+  // This is called infinitely.                                              //
+  // Do not call blocking functions from here!                               //
+  /////////////////////////////////////////////////////////////////////////////
+}
+
+/**************************************************************************//**
+ * Application Deinit.
+ *****************************************************************************/
+void app_deinit(void)
+{
+  ncp_host_deinit();
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application deinit code here!                       //
+  // This is called once during termination.                                 //
+  /////////////////////////////////////////////////////////////////////////////
+}
+
+void sl_bt_on_event(sl_bt_msg_t *evt)
+{
   uint16_t result = 0;
+  sl_status_t sc;
 
-  if (!hostTargetSynchronized) {
-    return;
-  }
-  do {
-    if (sl_btmesh_pop_event(evt)) {
-      return;
-    }
+  switch (SL_BT_MSG_ID(evt->header)) {
+    // -------------------------------
+    // This event indicates the device has started and the radio is ready.
+    // Do not call any stack command before receiving this boot event!
+    case sl_bt_evt_system_boot_id:
 
-    switch (SL_BT_MSG_ID(evt->header)) {
-      case sl_btmesh_evt_node_initialized_id:
-      {
-        CS_OUTPUT("node initialized\r\n");
+      resetSwitchVariables();
+      // Print boot message.
+      app_log("Bluetooth stack booted: v%d.%d.%d-b%d\r\n",
+                   evt->data.evt_system_boot.major,
+                   evt->data.evt_system_boot.minor,
+                   evt->data.evt_system_boot.patch,
+                   evt->data.evt_system_boot.build);
 
-        // Initialize generic client models
-        sl_btmesh_generic_client_init();
+      // Initialize Mesh stack in Node operation mode,
+      // wait for initialized event
+      app_log("Node init\r\n");
+      sc = sl_btmesh_node_init();
+      app_assert(sc == SL_STATUS_OK,
+                 "[E: 0x%d] Failed to init node\r\n",
+                 (int)sc);
+      pthread_mutex_lock(&syncFlagMetex);
+      hostTargetSynchronized = true;
+      pthread_mutex_unlock(&syncFlagMetex);
+      app_log("Node init done\r\n");
 
-        sl_btmesh_evt_node_initialized_t *pData = (sl_btmesh_evt_node_initialized_t *)&(evt->data);
+      break;
 
-        if (pData->provisioned) {
-          CS_OUTPUT("node is provisioned. address:%x, ivi:%d\r\n", pData->address, pData->iv_index);
+    ///////////////////////////////////////////////////////////////////////////
+    // Add additional event handlers here as your application requires!      //
+    ///////////////////////////////////////////////////////////////////////////
 
-          primAddr = pData->address;
-          elemIndex = 0; // index of primary element is zero. This example has only one element.
-          provisioned = true;
-          switch_node_init();
-          // Initialize Low Power Node functionality
+    case sl_bt_evt_connection_opened_id:
+      app_log("evt:sl_bt_evt_connection_opened_id\r\n");
+      num_connections++;
+      conn_handle = evt->data.evt_connection_opened.connection;
+
+      // turn off lpn feature after GATT connection is opened
+      lpn_deinit();
+      break;
+
+    case sl_bt_evt_connection_closed_id:
+      app_log("evt:conn closed, reason 0x%x\r\n", evt->data.evt_connection_closed.reason);
+      conn_handle = 0xFF;
+      if (num_connections > 0) {
+        if (--num_connections == 0) {
+          // initialize lpn when there is no active connection
           lpn_init();
-        } else {
-          CS_OUTPUT("node is unprovisioned\r\n");
-
-          CS_OUTPUT("starting unprovisioned beaconing...\r\n");
-          sl_btmesh_node_start_unprov_beaconing(0x3); // enable ADV and GATT provisioning bearer
         }
       }
       break;
 
-      case sl_btmesh_evt_node_provisioned_id:
+    case sl_bt_evt_connection_parameters_id:
+      app_log("Connection params: interval %d, timeout %d\r\n",
+                evt->data.evt_connection_parameters.interval,
+                evt->data.evt_connection_parameters.timeout);
+      break;
+
+    case sl_bt_evt_advertiser_timeout_id:
+      // these events silently discarded
+      break;
+
+    default:
+      app_log_debug("Unhandled event [0x%08x]\r\n",
+                SL_BT_MSG_ID(evt->header));
+      break;
+    // -------------------------------
+    // Default event handler.
+  }
+}
+
+/**************************************************************************//**
+ * Bluetooth Mesh stack event handler.
+ * This overrides the dummy weak implementation.
+ *
+ * @param[in] evt Event coming from the Bluetooth Mesh stack.
+ *****************************************************************************/
+
+void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
+{
+  uint16_t result = 0;
+  switch (SL_BT_MSG_ID(evt->header)) {
+    case sl_btmesh_evt_node_initialized_id:
+    {
+      // Initialize generic client models
+      sl_btmesh_generic_client_init();
+
+      sl_btmesh_evt_node_initialized_t *pData = (sl_btmesh_evt_node_initialized_t *)&(evt->data);
+
+      if (pData->provisioned) {
+        app_log("Node is provisioned. address:%x, ivi:%d\r\n", pData->address, pData->iv_index);
+
+        primAddr = pData->address;
         elemIndex = 0; // index of primary element is zero. This example has only one element.
-        primAddr = evt->data.evt_node_provisioned.address;
         provisioned = true;
         switch_node_init();
-        // try to initialize lpn after 30 seconds, if no configuration messages come
-        result = sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(30000),
-                                                   TIMER_ID_NODE_CONFIGURED,
-                                                   1);
+        // Initialize Low Power Node functionality
+        lpn_init();
+      } else {
+        app_log("Node is unprovisioned\r\n");
+
+        app_log("Starting unprovisioned beaconing...\r\n");
+        sl_btmesh_node_start_unprov_beaconing(0x3); // enable ADV and GATT provisioning bearer
+      }
+    }
+    break;
+
+    case sl_btmesh_evt_node_provisioned_id:
+      elemIndex = 0; // index of primary element is zero. This example has only one element.
+      primAddr = evt->data.evt_node_provisioned.address;
+      provisioned = true;
+      switch_node_init();
+      // try to initialize lpn after 30 seconds, if no configuration messages come
+      result = startTimer(30000000, TIMER_ID_NODE_CONFIGURED);
+      if (result) {
+        app_log("Timer failure?!  %x\r\n", result);
+      }
+      app_log("Node provisioned, got address=%x\r\n", evt->data.evt_node_provisioned.address);
+      break;
+
+    case sl_btmesh_evt_node_provisioning_failed_id:
+      app_log_error("Provisioning failed, code %x\r\n", evt->data.evt_node_provisioning_failed.result);
+      initiate_factory_reset(0);
+      break;
+
+    case sl_btmesh_evt_node_provisioning_started_id:
+      app_log("Started provisioning\r\n");
+      break;
+
+    case sl_btmesh_evt_node_key_added_id:
+      app_log("Got new %s key with index %x\r\n", evt->data.evt_node_key_added.type == 0 ? "network" : "application",
+                evt->data.evt_node_key_added.index);
+
+      app_log("Timer added");
+      // try to init lpn 5 seconds after adding key
+      result = startTimer(5000000, TIMER_ID_NODE_CONFIGURED);
+      if (result) {
+        app_log("Timer failure?!  %x\r\n", result);
+      }
+      break;
+
+    case sl_btmesh_evt_node_model_config_changed_id:
+    {
+      app_log("Model config changed\r\n");
+      // try to init lpn 5 seconds after configuration change
+      result = startTimer(5000000, TIMER_ID_NODE_CONFIGURED);
+      if (result) {
+        app_log("Timer failure?! %x\r\n", result);
+      }
+    }
+    break;
+
+    case sl_btmesh_evt_node_reset_id:
+      app_log("evt sl_btmesh_evt_node_reset_id\r\n");
+      initiate_factory_reset(1);
+      break;
+
+    case sl_btmesh_evt_lpn_friendship_established_id:
+      app_log("Friendship established\r\n");
+      break;
+
+    case sl_btmesh_evt_lpn_friendship_failed_id:
+      app_log("Friendship failed\r\n");
+      // try again in 2 seconds
+      result = startTimer(2000000, TIMER_ID_FRIEND_FIND);
+      if (result) {
+        app_log("Timer failure?!  %x\r\n", result);
+      }
+      break;
+
+    case sl_btmesh_evt_lpn_friendship_terminated_id:
+      app_log("Friendship terminated\r\n");
+      if (num_connections == 0) {
+        // try again in 2 seconds
+        result = startTimer(2000000, TIMER_ID_FRIEND_FIND);
         if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
-        CS_OUTPUT("node provisioned, got address=%x\r\n", evt->data.evt_node_provisioned.address);
-        break;
-
-      case sl_btmesh_evt_node_provisioning_failed_id:
-        CS_ERROR("provisioning failed, code %x\r\n", evt->data.evt_node_provisioning_failed.result);
-        initiate_factory_reset(0);
-        break;
-
-      case sl_btmesh_evt_node_provisioning_started_id:
-        CS_OUTPUT("Started provisioning\r\n");
-        break;
-
-      case sl_btmesh_evt_node_key_added_id:
-        CS_OUTPUT("got new %s key with index %x\r\n", evt->data.evt_node_key_added.type == 0 ? "network" : "application",
-                  evt->data.evt_node_key_added.index);
-
-        // try to init lpn 5 seconds after adding key
-        result = sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(5000),
-                                                   TIMER_ID_NODE_CONFIGURED,
-                                                   1);
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
-        break;
-
-      case sl_btmesh_evt_node_model_config_changed_id:
-      {
-        CS_OUTPUT("model config changed\r\n");
-        // try to init lpn 5 seconds after configuration change
-        result = sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(5000),
-                                                   TIMER_ID_NODE_CONFIGURED,
-                                                   1);
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
+          app_log("Timer failure?! %x\r\n", result);
         }
       }
       break;
 
-      case sl_btmesh_evt_node_reset_id:
-        CS_OUTPUT("evt sl_btmesh_evt_node_reset_id\r\n");
-        initiate_factory_reset(1);
-        break;
-
-      case sl_btmesh_evt_lpn_friendship_established_id:
-        CS_OUTPUT("friendship established\r\n");
-        break;
-
-      case sl_btmesh_evt_lpn_friendship_failed_id:
-        CS_OUTPUT("friendship failed\r\n");
-        // try again in 2 seconds
-        result = sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(2000),
-                                                   TIMER_ID_FRIEND_FIND,
-                                                   1);
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
-        break;
-
-      case sl_btmesh_evt_lpn_friendship_terminated_id:
-        CS_OUTPUT("friendship terminated\r\n");
-        if (num_connections == 0) {
-          // try again in 2 seconds
-          result = sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(2000),
-                                                     TIMER_ID_FRIEND_FIND,
-                                                     1);
-          if (result) {
-            CS_OUTPUT("timer failure?!  %x\r\n", result);
-          }
-        }
-        break;
-
-      default:
-        dbgPrint("Unhandled event [0x%08x]\n",
-                 BGLIB_MSG_ID(evt->header));
-        break;
-    }
-  } while (evt);
+    default:
+      app_log_debug("Unhandled event [0x%08x]\r\n",
+                SL_BT_MSG_ID(evt->header));
+      break;
+    // -------------------------------
+    // Default event handler.
+  }
 }
 
 static char **splitCmd(char *pIn, int *argc)
@@ -634,17 +681,17 @@ static char **splitCmd(char *pIn, int *argc)
 
 static void outputUsage(void)
 {
-  CS_OUTPUT("-------------------------------------------------------------\n");
-  CS_OUTPUT("Command\tUsage\t\tDescription\n");
+  app_log("-------------------------------------------------------------\r\n");
+  app_log("Command\t\tUsage\t\tDescription\r\n");
   for (int i = 0; i < CMD_NUM(); i++) {
-    CS_OUTPUT("%s%s%s%s%s\n",
+    app_log("%s%s%s%s%s\r\n",
               CMDs[i].command,
               CMDs[i].p1,
               CMDs[i].usage,
               CMDs[i].p2,
               CMDs[i].desc);
   }
-  CS_OUTPUT("-------------------------------------------------------------\n");
+  app_log("-------------------------------------------------------------\r\n");
 }
 
 static int findCmdLoc(uint8_t argc, const char *argv[])
@@ -652,7 +699,7 @@ static int findCmdLoc(uint8_t argc, const char *argv[])
   int pos = 0;
 
   for (int i = 0; i < argc; i++) {
-    dbgPrint("PARAM[%d] = [%s]\n",
+    app_log_debug("PARAM[%d] = [%s]\r\n",
              i,
              argv[i]);
   }
@@ -673,10 +720,12 @@ static int execCMD(void)
   char **argv = NULL;
   int valid = 0, argc, err = 0;
 
+  //app_log("Buff.\r\n");
   pthread_mutex_lock(&commandBufMutex);
+  //app_log("Buff.\r\n");
   if (BUF_PENDING()) {
     strcpy(locBuf, commandBuf[bufReadOffset]);
-    dbgPrint("Echo CMD [%s]\n",
+    app_log_debug("Echo CMD [%s]\r\n",
              commandBuf[bufReadOffset]);
     ID_INCREMENT(bufReadOffset);
     valid = 1;
@@ -699,7 +748,7 @@ static int execCMD(void)
 
   if (pos == CMD_NUM()) {
     /* CMD not supported */
-    CS_ERROR("CMD not supported.\n");
+    app_log_error("CMD not supported.\r\n");
     outputUsage();
     err = 1;
     goto out;
@@ -709,14 +758,14 @@ static int execCMD(void)
                           (const char **)argv);
 
   if (ret) {
-    CS_ERROR("[[%s]] CMD failed with error code [0x%04x]\n",
+    app_log_error("[[%s]] CMD failed with error code [0x%04x]\r\n",
              argv[0],
              ret);
     err = 2;
     goto out;
   }
 
-  CS_OUTPUT("[[%s]] CMD success\n",
+  app_log("[[%s]] CMD success\r\n",
             argv[0]);
 
   out:
@@ -739,7 +788,7 @@ static int getCMD(void)
 
     if ((wOffset == CONSOLE_RX_BUF_SIZE) && !err) {
       /* CMD too long */
-      CS_ERROR("CMD too long\n");
+      app_log_error("CMD too long\r\n");
       err = 1;
     }
   }
@@ -752,13 +801,14 @@ static int getCMD(void)
     pthread_mutex_lock(&commandBufMutex);
     if (BUF_FULL()) {
       /* CMD buffer full */
-      CS_ERROR("CMD buffer full\n");
+      app_log_error("CMD buffer full\r\n");
       err = 2;
     } else {
       /* Buffer not full, copy the local content to it */
       locBuf[wOffset] = '\0';
       strcpy(commandBuf[bufWriteOffset], locBuf);
       ID_INCREMENT(bufWriteOffset);
+      app_log("New command %d %d\r\n", bufWriteOffset, bufReadOffset);
     }
     pthread_mutex_unlock(&commandBufMutex);
   }
@@ -813,9 +863,9 @@ void send_onoff_request(int retrans)
     );
 
   if (resp) {
-    CS_OUTPUT("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
+    app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
   } else {
-    CS_OUTPUT("request sent, trid = %u, delay = %d\r\n", trid, delay);
+    app_log("Request sent, trid = %u, delay = %d\r\n", trid, delay);
   }
 
   /* keep track of how many requests has been sent */
@@ -854,7 +904,7 @@ void send_lightness_request(int retrans)
    * on/off requests per button press the delays are set as 100, 50, 0 ms
    */
   delay = (request_count - 1) * 50;
-
+app_log("Step1");
   resp = mesh_lib_generic_client_publish(
     MESH_LIGHTING_LIGHTNESS_CLIENT_MODEL_ID,
     elemIndex,
@@ -864,11 +914,12 @@ void send_lightness_request(int retrans)
     delay,
     0     // flags
     );
+app_log("Step2");
 
   if (resp) {
-    CS_OUTPUT("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
+    app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
   } else {
-    CS_OUTPUT("request sent, trid = %u, delay = %d\r\n", trid, delay);
+    app_log("Request sent, trid = %u, delay = %d\r\n", trid, delay);
   }
 
   /* keep track of how many requests has been sent */
@@ -923,9 +974,9 @@ void send_ctl_request(int retrans)
     );
 
   if (resp) {
-    CS_OUTPUT("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
+    app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
   } else {
-    CS_OUTPUT("request sent, trid = %u, delay = %d\r\n", trid, delay);
+    app_log("Request sent, trid = %u, delay = %d\r\n", trid, delay);
   }
 
   /* keep track of how many requests has been sent */
@@ -967,16 +1018,16 @@ static int onOffExec(int argc, const char *argv[])
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
   if (!provisioned) {
-    CS_OUTPUT("Node is unprovisioned, need to be provisioned first.\n");
+    app_log("Node is unprovisioned, need to be provisioned first.\r\n");
     return 4;
   }
 
-  CS_OUTPUT("Set light %s\n",
+  app_log("Set light %s\r\n",
             on == 1 ? "on" : "off");
 
   switch_pos = on;
@@ -999,7 +1050,7 @@ static int onOffExec(int argc, const char *argv[])
   send_onoff_request(0);
 
   /* start a repeating soft timer to trigger re-transmission of the request after 50 ms delay */
-  sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(50), TIMER_ID_RETRANS, 0);
+  startTimer(50000, TIMER_ID_RETRANS);
   return 0;
 #endif
 }
@@ -1031,16 +1082,16 @@ static int lightnessExec(int argc,
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
   if (!provisioned) {
-    CS_OUTPUT("Node is unprovisioned, need to be provisioned first.\n");
+    app_log("Node is unprovisioned, need to be provisioned first.\r\n");
     return 4;
   }
 
-  CS_OUTPUT("Set lightness to %d%%\n",
+  app_log("Set lightness to %d%%\r\n",
             (uint8_t)per);
 
   lightness_percent = (uint8_t)per;
@@ -1062,7 +1113,7 @@ static int lightnessExec(int argc,
   send_lightness_request(0);
 
   /* start a repeating soft timer to trigger re-transmission of the request after 50 ms delay */
-  sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(50), TIMER_ID_RETRANS, 0);
+  startTimer(50000, TIMER_ID_RETRANS);
   return 0;
 #endif
 }
@@ -1094,16 +1145,16 @@ static int ctlExec(int argc,
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
   if (!provisioned) {
-    CS_OUTPUT("Node is unprovisioned, need to be provisioned first.\n");
+    app_log("Node is unprovisioned, need to be provisioned first.\r\n");
     return 4;
   }
 
-  CS_OUTPUT("Set Color Temperature to %d%%\n",
+  app_log("Set Color Temperature to %d%%\r\n",
             (uint8_t)per);
 
   colorTemperaturePercent = (uint8_t)per;
@@ -1129,7 +1180,7 @@ static int ctlExec(int argc,
   send_ctl_request(0);
 
   /* start a repeating soft timer to trigger re-transmission of the request after 50 ms delay */
-  sl_bt_system_set_soft_timer(TIMER_MS_2_TIMERTICK(50), TIMER_ID_RETRANS, 0);
+  startTimer(50000, TIMER_ID_RETRANS);
   return 0;
 #endif
 }
@@ -1153,11 +1204,11 @@ static int factoryResetExec(int argc, const char *argv[])
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
-  CS_OUTPUT("%s Resetting...\n",
+  app_log("%s Resetting...\r\n",
             reset == 1 ? "Factory" : "Normal");
 
   initiate_factory_reset(reset);
@@ -1174,7 +1225,7 @@ static int usageExec(int argc,
 static int exitExec(int argc,
                     const char *argv[])
 {
-  CS_OUTPUT("Exit program\n");
+  app_log("Exit program\r\n");
   exit(0);
   return 0;
 }
