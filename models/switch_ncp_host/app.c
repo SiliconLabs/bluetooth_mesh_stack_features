@@ -1,11 +1,34 @@
-/*************************************************************************
-    > File Name: app.c
-    > Author: Kevin
-    > Created Time: 2019-01-09
-    > Description:
- ************************************************************************/
+/***************************************************************************//**
+ * @file
+ * @brief BTmesh NCP-host Switch Example Project.
+ *******************************************************************************
+ * # License
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
+ *******************************************************************************
+ *
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
+ *
+ ******************************************************************************/
 
-/* Includes *********************************************************** */
+/* Includes */
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -20,13 +43,14 @@
 #include "sl_btmesh_lighting_model_capi_types.h"
 #include "sl_btmesh_lib.h"
 #include "sl_bt_types.h"
-#include "app.h"
 #include "app_log.h"
 #include "app_assert.h"
 #include "sl_btmesh_ncp_host.h"
 #include "ncp_host.h"
 #include "sl_bt_ncp_host.h"
+
 #include "utils/timer.h"
+#include "app.h"
 
 // Optstring argument for getopt.
 #define OPTSTRING      NCP_HOST_OPTSTRING "h"
@@ -64,6 +88,7 @@
 #define TIMER_ID_RETRANS          10
 #define TIMER_ID_FRIEND_FIND      20
 #define TIMER_ID_NODE_CONFIGURED  30
+#define NO_HANDS  40
 
 /// Timer Frequency used
 #define TIMER_CLK_FREQ ((uint32_t)32768)
@@ -74,7 +99,6 @@
 #define SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL 3
 
 /* Static Variables *************************************************** */
-BGLIB_DEFINE();
 
 enum {
   noneReq,
@@ -116,10 +140,7 @@ static pthread_t consoleThreadId, appMainThreadId;
 /* Static Functions Declaractions ************************************* */
 static int getCMD(void);
 static int execCMD(void);
-
-void send_onoff_request(int retrans);
-void send_lightness_request(int retrans);
-void send_ctl_request(int retrans);
+static void consoleInit(void);
 
 static int onOffExec(int argc, const char *argv[]);
 static int lightnessExec(int argc, const char *argv[]);
@@ -173,204 +194,6 @@ static const CmdItem_t CMDs[] = {
 };
 
 #define CMD_NUM()                                     (sizeof(CMDs) / sizeof(CmdItem_t))
-
-static void consoleInit(void)
-{
-  pthread_mutex_lock(&commandBufMutex);
-  memset(commandBuf, 0, CONSOLE_RX_BUF_SIZE * MAX_BUF_NUM);
-  bufReadOffset = 0;
-  bufWriteOffset = 0;
-  pthread_mutex_unlock(&commandBufMutex);
-}
-
-static inline void resetSwitchVariables(void)
-{
-  pthread_mutex_lock(&syncFlagMetex);
-  hostTargetSynchronized = false;
-  pthread_mutex_unlock(&syncFlagMetex);
-  provisioned = false;
-  lpn_active = 0;
-  primAddr = 0x0000;
-  elemIndex = 0xFFFF;
-  trid = 0;
-  num_connections = 0;
-  conn_handle = 0xFF;
-  switch_pos = 0;
-  lightness_percent = 0;
-  colorTemperaturePercent = 0;
-  lightness_level = 0;
-  temperature_level = 0;
-}
-
-void initiate_factory_reset(int type)
-{
-  if (conn_handle != 0xFF) {
-    sl_bt_connection_close(conn_handle);
-  }
-
-  if (type) {
-    sl_bt_nvm_erase_all();
-    sleep(1);
-  }
-}
-
-void switch_node_init(void)
-{
-  app_log("Mesh lib init\r\n");
-  mesh_lib_init(SL_BTMESH_GENERIC_BASE_REGISTRY_INIT_SIZE, SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL);
-  app_log("Mesh lib init done\r\n");
-}
-
-/***************************************************************************//**
- * Initialize LPN functionality with configuration and friendship establishment.
- ******************************************************************************/
-void lpn_init(void)
-{
-  uint16_t result;
-
-  // Do not initialize LPN if lpn is currently active
-  // or any GATT connection is opened
-  if (lpn_active || num_connections) {
-    return;
-  }
-
-  // Initialize LPN functionality.
-  result = sl_btmesh_lpn_init();
-  if (result) {
-    app_log("LPN init failed (0x%x)\r\n", result);
-    return;
-  }
-  lpn_active = 1;
-  app_log("LPN initialized\r\n");
-
-  // Configure the lpn with following parameters:
-  // - Minimum friend queue length = 2
-  // - Poll timeout = 5 seconds
-  
-  // Configure LPN minimum friend queue length
-  result = sl_btmesh_lpn_config(0, 2);
-  if (result) {
-    app_log("LPN queue configuration failed (0x%lx)\r\n", result);
-    return;
-  }
-
-  // Configure LPN poll timeout
-  result = sl_btmesh_lpn_config(1, 5 * 1000);
-  if (result) {
-    app_log("LPN poll timeout configuration failed (0x%lx)\r\n", result);
-    return;
-  }
-
-  app_log("Trying to find friend...\r\n");
-  result = sl_btmesh_lpn_establish_friendship(0);
-  app_log("Firendifriend\r\n");
-
-
-  if (result != 0) {
-    app_log("ret.code %x\r\n", result);
-  }
-}
-
-/***************************************************************************//**
- * Deinitialize LPN functionality.
- ******************************************************************************/
-void lpn_deinit(void)
-{
-  uint16_t result;
-
-  if (!lpn_active) {
-    return; // lpn feature is currently inactive
-  }
-
-  result = startTimer(0, TIMER_ID_FRIEND_FIND);
-
-  // Terminate friendship if exist
-  result = sl_btmesh_lpn_terminate_friendship(0);
-  if (result) {
-    app_log("Friendship termination failed (0x%x)\r\n", result);
-  }
-  // turn off lpn feature
-  result = sl_btmesh_lpn_deinit();
-  if (result) {
-    app_log("LPN deinit failed (0x%x)\r\n", result);
-  }
-  lpn_active = 0;
-  app_log("LPN deinitialized\r\n");
-}
-
-void *pConsoleThread(void *pIn)
-{
-  consoleInit();
-  for (;;) {
-    app_log("$ ");
-    getCMD();
-    usleep(80 * 1000);
-    //app_log("Queue %d\r\n", isTimerElapsed());
-  }
-  return NULL;
-}
-
-void *pAppMainThread(void *pIn)
-{
-  for (;;) {
-    //app_log("Test");
-    execCMD();
-    if(isTimerElapsed()) {
-      timerHandle(getElapsedTimer());
-    }
-  };
-
-  return NULL;
-}
-
-void timerHandle(int handle) {
-  app_log("Timerhandle %d\r\n", handle);
-  uint16_t result = 0;
-  switch (handle) {
-    case TIMER_ID_RETRANS:
-      app_log("operation %d\r\n", operation);
-      switch (operation) {
-        case onoffReq:
-          send_onoff_request(1); // param 1 indicates that this is a retransmission
-          break;
-        case lightnessReq:
-          send_lightness_request(1); // param 1 indicates that this is a retransmission
-          break;
-        case ctlReq:
-          send_ctl_request(1); // param 1 indicates that this is a retransmission
-          break;
-        default:
-          break;
-      }
-      // stop retransmission timer if it was the last attempt
-        app_log("ret.code %d\r\n", request_count);
-      if (request_count == 0) {
-        startTimer(0, TIMER_ID_RETRANS);
-      }
-      break;
-
-    case TIMER_ID_NODE_CONFIGURED:
-      if (!lpn_active) {
-        app_log("Trying to initialize lpn...\r\n");
-        lpn_init();
-      }
-      break;
-
-    case TIMER_ID_FRIEND_FIND:
-    {
-      app_log("Trying to find friend...\r\n");
-      result = sl_btmesh_lpn_establish_friendship(0);
-
-      if (result != 0) {
-        app_log("ret.code %x\r\n", result);
-      }
-    }
-    break;
-
-    default:
-      break;
-  }
-}
 
 void app_init(int argc, char *argv[])
 {
@@ -426,7 +249,6 @@ void app_init(int argc, char *argv[])
      exit(1);
   }
 
-
   if (-1 == pthread_create(&appMainThreadId,
                            NULL,
                            pAppMainThread,
@@ -435,7 +257,7 @@ void app_init(int argc, char *argv[])
     exit(1);
   }
 
-  //startTimer(20, TIMER_ID_RETRANS);
+  startTimer(30000000, NO_HANDS);
 }
 
 /**************************************************************************//**
@@ -465,7 +287,6 @@ void app_deinit(void)
 
 void sl_bt_on_event(sl_bt_msg_t *evt)
 {
-  uint16_t result = 0;
   sl_status_t sc;
 
   switch (SL_BT_MSG_ID(evt->header)) {
@@ -655,6 +476,213 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       break;
     // -------------------------------
     // Default event handler.
+  }
+}
+
+static void consoleInit(void)
+{
+  pthread_mutex_lock(&commandBufMutex);
+  memset(commandBuf, 0, CONSOLE_RX_BUF_SIZE * MAX_BUF_NUM);
+  bufReadOffset = 0;
+  bufWriteOffset = 0;
+  pthread_mutex_unlock(&commandBufMutex);
+}
+
+static inline void resetSwitchVariables(void)
+{
+  pthread_mutex_lock(&syncFlagMetex);
+  hostTargetSynchronized = false;
+  pthread_mutex_unlock(&syncFlagMetex);
+  provisioned = false;
+  lpn_active = 0;
+  primAddr = 0x0000;
+  elemIndex = 0xFFFF;
+  trid = 0;
+  num_connections = 0;
+  conn_handle = 0xFF;
+  switch_pos = 0;
+  lightness_percent = 0;
+  colorTemperaturePercent = 0;
+  lightness_level = 0;
+  temperature_level = 0;
+}
+
+void initiate_factory_reset(int type)
+{
+  if (conn_handle != 0xFF) {
+    sl_bt_connection_close(conn_handle);
+  }
+
+  if (type) {
+    sl_bt_nvm_erase_all();
+    sleep(1);
+  }
+}
+
+void switch_node_init(void)
+{
+  app_log("Mesh lib init\r\n");
+  mesh_lib_init(SL_BTMESH_GENERIC_BASE_REGISTRY_INIT_SIZE, SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL);
+  app_log("Mesh lib init done\r\n");
+}
+
+/***************************************************************************//**
+ * Initialize LPN functionality with configuration and friendship establishment.
+ ******************************************************************************/
+void lpn_init(void)
+{
+  uint16_t result;
+
+  // Do not initialize LPN if lpn is currently active
+  // or any GATT connection is opened
+  if (lpn_active || num_connections) {
+    return;
+  }
+
+  // Initialize LPN functionality.
+  result = sl_btmesh_lpn_init();
+  if (result) {
+    app_log("LPN init failed (0x%x)\r\n", result);
+    return;
+  }
+  lpn_active = 1;
+  app_log("LPN initialized\r\n");
+
+  // Configure the lpn with following parameters:
+  // - Minimum friend queue length = 2
+  // - Poll timeout = 5 seconds
+  
+  // Configure LPN minimum friend queue length
+  result = sl_btmesh_lpn_config(0, 2);
+  if (result) {
+    app_log("LPN queue configuration failed (0x%hx)\r\n", result);
+    return;
+  }
+
+  // Configure LPN poll timeout
+  result = sl_btmesh_lpn_config(1, 5 * 1000);
+  if (result) {
+    app_log("LPN poll timeout configuration failed (0x%hx)\r\n", result);
+    return;
+  }
+
+  app_log("Trying to find friend...\r\n");
+  result = sl_btmesh_lpn_establish_friendship(0);
+  app_log("Firendifriend\r\n");
+
+
+  if (result != 0) {
+    app_log("ret.code %x\r\n", result);
+  }
+}
+
+/***************************************************************************//**
+ * Deinitialize LPN functionality.
+ ******************************************************************************/
+void lpn_deinit(void)
+{
+  uint16_t result;
+
+  if (!lpn_active) {
+    return; // lpn feature is currently inactive
+  }
+
+  result = startTimer(0, TIMER_ID_FRIEND_FIND);
+
+  // Terminate friendship if exist
+  result = sl_btmesh_lpn_terminate_friendship(0);
+  if (result) {
+    app_log("Friendship termination failed (0x%x)\r\n", result);
+  }
+  // turn off lpn feature
+  result = sl_btmesh_lpn_deinit();
+  if (result) {
+    app_log("LPN deinit failed (0x%x)\r\n", result);
+  }
+  lpn_active = 0;
+  app_log("LPN deinitialized\r\n");
+}
+
+void *pConsoleThread(void *pIn)
+{
+  consoleInit();
+  for (;;) {
+    app_log("$ ");
+    getCMD();
+    usleep(80 * 1000);
+    //app_log("Queue %d\r\n", isTimerElapsed());
+  }
+  return NULL;
+}
+
+void *pAppMainThread(void *pIn)
+{
+  for (;;) {
+    //app_log("Test");
+    execCMD();
+    if(isTimerElapsed()) {
+      app_log("Elapsed\r\n");
+      timerHandle(getElapsedTimer());
+    }
+  };
+
+  return NULL;
+}
+
+void timerHandle(int handle) {
+  app_log("Timerhandle %d\r\n", handle);
+  uint16_t result = 0;
+  switch (handle) {
+    case TIMER_ID_RETRANS:
+      app_log("operation %d\r\n", operation);
+      switch (operation) {
+        case onoffReq:
+          send_onoff_request(1); // param 1 indicates that this is a retransmission
+          break;
+        case lightnessReq:
+          send_lightness_request(1); // param 1 indicates that this is a retransmission
+          break;
+        case ctlReq:
+          send_ctl_request(1); // param 1 indicates that this is a retransmission
+          break;
+        default:
+          break;
+      }
+      // stop retransmission timer if it was the last attempt
+        app_log("ret.code %d\r\n", request_count);
+      if (request_count == 0) {
+        startTimer(0, TIMER_ID_RETRANS);
+      }
+      break;
+
+    case TIMER_ID_NODE_CONFIGURED:
+      if (!lpn_active) {
+        app_log("Trying to initialize lpn...\r\n");
+        lpn_init();
+      }
+      break;
+
+    case TIMER_ID_FRIEND_FIND:
+    {
+      app_log("Trying to find friend...\r\n");
+      result = sl_btmesh_lpn_establish_friendship(0);
+
+      if (result != 0) {
+        app_log("ret.code %x\r\n", result);
+      }
+    }
+    break;
+
+    case NO_HANDS:
+    {
+      switch_pos = !switch_pos;
+      send_onoff_request(0);
+      startTimer(30000000, NO_HANDS);
+    }
+    break;
+
+    default:
+      break;
   }
 }
 
@@ -852,6 +880,7 @@ void send_onoff_request(int retrans)
    */
   delay = (request_count - 1) * 50;
 
+  app_log("Message sent 1");
   resp = mesh_lib_generic_client_publish(
     MESH_GENERIC_ON_OFF_CLIENT_MODEL_ID,
     elemIndex,
@@ -861,6 +890,7 @@ void send_onoff_request(int retrans)
     delay,
     0     // flags
     );
+  app_log("Response returned 1");
 
   if (resp) {
     app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
@@ -904,7 +934,8 @@ void send_lightness_request(int retrans)
    * on/off requests per button press the delays are set as 100, 50, 0 ms
    */
   delay = (request_count - 1) * 50;
-app_log("Step1");
+
+  app_log("Message sent 2");
   resp = mesh_lib_generic_client_publish(
     MESH_LIGHTING_LIGHTNESS_CLIENT_MODEL_ID,
     elemIndex,
@@ -914,7 +945,7 @@ app_log("Step1");
     delay,
     0     // flags
     );
-app_log("Step2");
+  app_log("Response returned 2");
 
   if (resp) {
     app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
@@ -963,6 +994,7 @@ void send_ctl_request(int retrans)
    */
   delay = (request_count - 1) * 50;
 
+  app_log("Message sent 3");
   resp = mesh_lib_generic_client_publish(
     MESH_LIGHTING_CTL_CLIENT_MODEL_ID,
     elemIndex,
@@ -972,6 +1004,7 @@ void send_ctl_request(int retrans)
     delay,
     0     // flags
     );
+  app_log("Response returned 3");
 
   if (resp) {
     app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
