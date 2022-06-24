@@ -1,4 +1,4 @@
-# Switch NCP Host
+# Switch NCP Host Example
 
 ## Introduction
 
@@ -23,6 +23,7 @@ This project README assumes that the reader is familiar with compiling source co
 
  - GNU make
  - MinGW for Windows /  GCC for Linux / Clang for macOS
+ - Simplicity Studio 5 with the latest SDK
  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4162A)
 
 ---

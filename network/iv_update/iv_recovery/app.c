@@ -3,7 +3,7 @@
  * @brief Application code
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * The licensor of this software is Silicon Laboratories Inc. Your use of this
@@ -15,6 +15,7 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
 #include <stdbool.h>
 #include "em_common.h"
 #include "sl_status.h"
@@ -25,8 +26,8 @@
 
 #include "gatt_db.h"
 
-#include "sl_app_log.h"
-#include "sl_app_assert.h"
+#include "app_log.h"
+#include "app_assert.h"
 #include "sl_simple_timer.h"
 
 /* Buttons and LEDs headers */
@@ -54,11 +55,11 @@
 #ifdef USE_LOGGING_SYSTEM
 #include "logging/logging.h"
 #else
-#define LOGE(...) sl_app_log(__VA_ARGS__)
-#define LOGW(...) sl_app_log(__VA_ARGS__)
-#define LOGI(...) sl_app_log(__VA_ARGS__)
-#define LOGD(...) sl_app_log(__VA_ARGS__)
-#define LOG_PLAIN(...) sl_app_log(__VA_ARGS__)
+#define LOGE(...) app_log(__VA_ARGS__)
+#define LOGW(...) app_log(__VA_ARGS__)
+#define LOGI(...) app_log(__VA_ARGS__)
+#define LOGD(...) app_log(__VA_ARGS__)
+#define LOG_PLAIN(...) app_log(__VA_ARGS__)
 #define SE_CALL(x) (x)
 #endif
 
@@ -116,11 +117,7 @@ static void iv_config(uint8_t iv_test_mode,
 
   sc_test_mode = sl_btmesh_test_set_ivupdate_test_mode(iv_test_mode);
   sc_recovery_mode = sl_btmesh_node_set_ivrecovery_mode(iv_recovery_mode);
-  sc_snb_state = sl_btmesh_test_set_local_config(
-                    sl_btmesh_node_beacon,
-                    0,
-                    1,
-                    &snb_state);
+  sc_snb_state = sl_btmesh_test_set_beacon(1, &snb_state);
 
   LOGI("%s IV test mode %s\r\n",
        iv_test_mode ? "Enable" : "Disable",
@@ -146,7 +143,7 @@ SL_WEAK void app_init(void)
   // Put your additional application init code here!                         //
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
-  sl_app_log("BT mesh Light initialized\r\n");
+  app_log("BT mesh Light initialized\r\n");
   app_led_init();
 #ifdef USE_LOGGING_SYSTEM
   INIT_LOG(0xFF);
@@ -181,18 +178,18 @@ static void set_device_name(bd_addr *addr)
   snprintf(name, NAME_BUF_LEN, "light node %02x:%02x",
            addr->addr[1], addr->addr[0]);
 
-  sl_app_log("Device name: '%s'\r\n", name);
+  app_log("Device name: '%s'\r\n", name);
 
   result = sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
                                                    0,
                                                    strlen(name),
                                                    (uint8_t *)name);
   if (result) {
-    sl_app_log("sl_bt_gatt_server_write_attribute_value failed, code %x\r\n",
-               result);
+    app_log("sl_bt_gatt_server_write_attribute_value failed, code %x\r\n",
+            result);
   }
   // Show device name on the LCD
-  lcd_print(name, BTMESH_WSTK_LCD_ROW_NAME);
+  lcd_print(name, SL_BTMESH_WSTK_LCD_ROW_NAME_CFG_VAL);
 }
 
 /***************************************************************************//**
@@ -208,7 +205,7 @@ bool handle_reset_conditions()
       || (sl_simple_button_get_state(sl_button_btn1.context)
           == SL_SIMPLE_BUTTON_PRESSED) ) {
     // Factory reset
-    sl_btmesh_initiate_factory_reset();
+    sl_btmesh_initiate_full_reset();
     return false;
   }
   return true;
@@ -228,16 +225,16 @@ static void handle_boot_event(void)
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
     sc = sl_bt_system_get_identity_address(&address, &address_type);
-    sl_app_assert(sc == SL_STATUS_OK,
-                  "[E: 0x%04x] Failed to get Bluetooth address\n",
-                  (int)sc);
+    app_assert(sc == SL_STATUS_OK,
+               "[E: 0x%04x] Failed to get Bluetooth address\n",
+               (int)sc);
     set_device_name(&address);
     // Initialize Mesh stack in Node operation mode, wait for initialized event
     sc = sl_btmesh_node_init();
     if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%x)", sc);
-      lcd_print(buf, BTMESH_WSTK_LCD_ROW_STATUS);
-      sl_app_log("Initialization failed (0x%x)\r\n", sc);
+      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
+      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
+      app_log("Initialization failed (0x%x)\r\n", sc);
     }
   }
 }
@@ -256,15 +253,15 @@ static void handle_le_connection_events(sl_bt_msg_t *evt)
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_bt_evt_connection_opened_id:
       num_connections++;
-      lcd_print("connected", BTMESH_WSTK_LCD_ROW_CONNECTION);
-      sl_app_log("Connected\r\n");
+      lcd_print("connected", SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
+      app_log("Connected\r\n");
       break;
 
     case sl_bt_evt_connection_closed_id:
       if (num_connections > 0) {
         if (--num_connections == 0) {
-          lcd_print("", BTMESH_WSTK_LCD_ROW_CONNECTION);
-          sl_app_log("Disconnected\r\n");
+          lcd_print("", SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
+          app_log("Disconnected\r\n");
         }
       }
       break;
@@ -317,9 +314,9 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         // Enable ADV and GATT provisioning bearer
         sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
 
-        sl_app_assert(sc == SL_STATUS_OK,
-                      "[E: 0x%04x] Failed to start unprovisioned beaconing\n",
-                      (int)sc);
+        app_assert(sc == SL_STATUS_OK,
+                   "[E: 0x%04x] Failed to start unprovisioned beaconing\n",
+                   (int)sc);
       }
       break;
 
@@ -334,13 +331,12 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       LOGI("IV recovery is needed. Current IV = %d, Received(Network) IV = %d\r\n",
            evt->data.evt_node_ivrecovery_needed.node_iv_index,
            evt->data.evt_node_ivrecovery_needed.network_iv_index);
-      sl_status_t sc = sl_btmesh_node_set_ivrecovery_mode(1);
       LOGI("Set IVR Enable %s\r\n", sc == SL_STATUS_OK ? "SUCCESS" : "FAILED");
       break;
 #endif
 
     case sl_btmesh_evt_node_reset_id:
-      sl_btmesh_initiate_factory_reset();
+      sl_btmesh_initiate_full_reset();
       break;
 
     default:
@@ -367,9 +363,9 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
                                          NO_CALLBACK_DATA,
                                          true);
 
-  sl_app_assert(sc == SL_STATUS_OK,
-                "[E: 0x%04x] Failed to start periodic timer\n",
-                (int)sc);
+  app_assert(sc == SL_STATUS_OK,
+             "[E: 0x%04x] Failed to start periodic timer\n",
+             (int)sc);
 
   app_show_btmesh_node_provisioning_started(result);
 }
@@ -379,9 +375,9 @@ void sl_btmesh_on_node_provisioned(uint16_t address,
                                    uint32_t iv_index)
 {
   sl_status_t sc = sl_simple_timer_stop(&app_led_blinking_timer);
-  sl_app_assert(sc == SL_STATUS_OK,
-                "[E: 0x%04x] Failed to stop periodic timer\n",
-                (int)sc);
+  app_assert(sc == SL_STATUS_OK,
+             "[E: 0x%04x] Failed to stop periodic timer\n",
+             (int)sc);
   // Turn off LED
   init_done = true;
   app_led_set_level(LED_LEVEL_OFF);
