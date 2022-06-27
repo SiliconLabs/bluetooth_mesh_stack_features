@@ -34,6 +34,11 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   - This Example is based on the ```Bluetooth Mesh - SoC Light``` included with the Silicon Labs GSDK
   - Create a new project based on the ```Bluetooth Mesh - SoC Light``` example
+  - Install the "Bluetooth Mesh > Stack Classes > Test" component
+  <img src="images/bluetooth_mesh_test_component.png">
+  Without this component, the test fuctions would return ((sl_status_t)0x000F) SL_STATUS_NOT_SUPPORTED during the initialization
+  <img src="images/bluetooth_mesh_test_missing.png">
+  <img src="images/bluetooth_mesh_test_installed.png">
   - Replace the original ```app.c``` file with the provided one, build and flash the board
   - Flash the other board with the ```Bluetooth Mesh - SoC Switch``` example
   - If everything went right, you should see the boards booting up 
