@@ -49,6 +49,11 @@
 
 #include "config.h"
 
+/* Buttons and LEDs headers */
+/*#include "app_button_press.h"
+#include "sl_simple_button.h"*/
+#include "sl_simple_button_instances.h"
+
 /***************************************************************************//**
  * @addtogroup Application
  * @{
@@ -90,6 +95,16 @@ uint8_t _dcd_raw_len = 0;
 // only the primary element is used in the configuration to simplify the code)
 tsDCD_ElemContent _sDCD_Prim;
 tsDCD_ElemContent _sDCD_2nd; /* second DCD element is decoded if present, but not used for anything (just informative) */
+
+
+
+/// Length of the display name buffer
+#define NAME_BUF_LEN                   20
+/// Used button index
+#define BUTTON_PRESS_BUTTON_0          0
+
+
+
 
 /* DCD parsing */
 
@@ -186,20 +201,101 @@ void initBLEMeshStack_app(void)
   return;
 }
 
+/***************************************************************************//**
+ * Set device name in the GATT database. A unique name is generated using
+ * the two last bytes from the Bluetooth address of this device. Name is also
+ * displayed on the LCD.
+ *
+ * @param[in] addr  Pointer to Bluetooth address.
+ ******************************************************************************/
+static void set_device_name(bd_addr *addr)
+{
+  char name[NAME_BUF_LEN];
+  sl_status_t result;
+
+  // Create unique device name using the last two bytes of the Bluetooth address
+  snprintf(name, NAME_BUF_LEN, "switch node %02x:%02x",
+           addr->addr[1], addr->addr[0]);
+
+  app_log("Device name: '%s'\r\n", name);
+
+  result = sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
+                                                   0,
+                                                   strlen(name),
+                                                   (uint8_t *)name);
+  if (result) {
+    app_log("sl_bt_gatt_server_write_attribute_value() failed, code %lx\r\n",
+            result);
+  }
+
+  // Show device name on the LCD
+  //lcd_print(name, SL_BTMESH_WSTK_LCD_ROW_NAME_CFG_VAL);
+}
+
+/***************************************************************************//**
+ * Handles button press and does a factory reset
+ *
+ * @return true if there is no button press
+ ******************************************************************************/
+bool handle_reset_conditions(void)
+{
+  // If PB0 is held down then do full factory reset
+  if (sl_simple_button_get_state(&sl_button_btn0)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Full factory reset
+    sl_btmesh_initiate_full_reset();
+    return false;
+  }
+
+#ifndef SINGLE_BUTTON
+  // If PB1 is held down then do node factory reset
+  if (sl_simple_button_get_state(&sl_button_btn1)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Node factory reset
+    sl_btmesh_initiate_node_reset();
+    return false;
+  }
+#endif // SL_CATALOG_BTN1_PRESENT
+  return true;
+}
+
+/***************************************************************************//**
+ * Handling of boot event.
+ * If needed it performs factory reset. In other case it sets device name
+ * and initialize mesh node.
+ ******************************************************************************/
+static void handle_boot_event(void)
+{
+  sl_status_t sc;
+  bd_addr address;
+  uint8_t address_type;
+  // Check reset conditions and continue if not reset.
+  if (handle_reset_conditions()) {
+    sc = sl_bt_system_get_identity_address(&address, &address_type);
+    app_assert_status_f(sc, "Failed to get Bluetooth address\n");
+    set_device_name(&address);
+    // Initialize Mesh stack in Node operation mode, wait for initialized event
+    sc = sl_btmesh_prov_init();
+    if (sc) {
+      app_log("Initialization failed (0x%x)\r\n", sc);
+    } else {
+      //initBLEMeshStack_app();
+    }
+  }
+}
+
+/***************************************************************************//**
+ * Handling of stack events. Both Bluetooth LE and Bluetooth mesh events
+ * are handled here.
+ * @param[in] evt_id  Incoming event ID.
+ * @param[in] evt     Pointer to incoming event.
+ ******************************************************************************/
 void sl_bt_on_event(sl_bt_msg_t *evt)
 {
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_bt_evt_system_boot_id:
-      if(SL_STATUS_OK != sl_btmesh_node_init())
-      {
-        /* Something went wrong */
-        app_log("sl_btmesh_node_init failed\n\r");
-      } else {
-        initBLEMeshStack_app();
-        app_log("Init done\n\r");
-      }
+      handle_boot_event();
       break;
-
     case sl_bt_evt_connection_opened_id:
       app_log("Connection opened\n\r");
       break;
@@ -249,13 +345,15 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
   sl_status_t sc;
   uint32_t handle;
 
+  app_log("event: 0x%x ", SL_BT_MSG_ID(evt->header));
+
   switch (SL_BT_MSG_ID(evt->header)) {
-      case sl_bt_evt_system_boot_id:
+      /*case sl_bt_evt_system_boot_id:
         app_log("Event Boot 2\n\r");
-        /* Initialize Mesh stack in Node operation mode, wait for initialized event */
-        if(SL_STATUS_OK != sl_btmesh_node_init())
+        // Initialize Mesh stack in Node operation mode, wait for initialized event
+        if(SL_STATUS_OK != sl_btmesh_prov_init())
         {
-            /* Something went wrong */
+            // Something went wrong
             app_log("sl_btmesh_node_init failed\n\r");
         } else {
             app_log("Init\n\r");
@@ -264,28 +362,32 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         break;
     case sl_btmesh_evt_node_initialized_id:
       if (!(evt->data.evt_node_initialized.provisioned)) {
+        app_log("sl_btmesh_evt_node_initialized_id\n\r");
         // Enable ADV and GATT provisioning bearer
-        sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
+        //sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
 
+        //sc = ();
         app_assert(sc == SL_STATUS_OK,
                    "[E: 0x%04x] Failed to start unprovisioned beaconing\n",
                    (int)sc);
+        //provisionBLEMeshStack_app(eMESH_PROV_NEXT);
       }
-      break;
+      break;*/
     case sl_btmesh_evt_node_reset_id:
       sl_btmesh_initiate_full_reset();
       break;
     case sl_btmesh_evt_prov_initialized_id: {
-      network_id = 0x0;//new_netkey_rsp->network_id;
+      app_log("sl_btmesh_evt_prov_initialized_id");
+      network_id = 0x8;//new_netkey_rsp->network_id;
       sc = sl_btmesh_prov_create_network(network_id, 16, fixed_netkey);
       if(0 != sc)
       {
         /* Something went wrong */
-        printf("sl_btmesh_prov_create_network: failed 0x%.2lx\n\r", sc);
+          app_log("sl_btmesh_prov_create_network: failed 0x%.2lx\n\r", sc);
       }
       else
       {
-        printf("Success, netkey id = %x\r\n", network_id);
+          app_log("Success, netkey id = %x\r\n", network_id);
       }
 
       size_t max_application_key_size = 16;
@@ -297,29 +399,35 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       if(0 != sc)
       {
         /* Something went wrong */
-        printf("sl_btmesh_prov_create_appkey: failed 0x%.2lx\n\r", sc);
+          app_log("sl_btmesh_prov_create_appkey: failed 0x%.2lx\n\r", sc);
       }
       else
       {
-        printf("Success, appkey id = %x\r\n", appkey_index);
+          app_log("Success, appkey id = %x\r\n", appkey_index);
       }
 
       /* Networks  */
-      printf("networks: 0x%x ", evt->data.evt_prov_initialized.networks);
+      app_log("networks: 0x%x ", evt->data.evt_prov_initialized.networks);
 
       /* address */
-      printf("address: 0x%x ", evt->data.evt_prov_initialized.address);
+      app_log("address: 0x%x ", evt->data.evt_prov_initialized.address);
 
       /* ivi  */
-      printf("ivi: 0x%lx", evt->data.evt_prov_initialized.iv_index);
-      printf("\n\r");
+      app_log("ivi: 0x%lx", evt->data.evt_prov_initialized.iv_index);
+      app_log("\n\r");
+
+      app_log("Unprovisioned beacons scan");
 
       /* Scan for unprovisioned beacons */
       result = sl_btmesh_prov_scan_unprov_beacons();
       }
     break;
+    case sl_btmesh_evt_prov_initialization_failed_id:
+      app_log("failed: 0x%x ", evt->data.evt_prov_initialization_failed.result);
+    break;
     case sl_btmesh_evt_prov_unprov_beacon_id:
 
+      app_log("Unprovisioned something");
       /* PB-ADV only */
       if(0 == evt->data.evt_prov_unprov_beacon.bearer)
       {
@@ -340,6 +448,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
                && ( 0x00 == bluetooth_device_table[idx].address.addr[5] )
               )
             {
+                app_log("To be prov");
               memcpy(&bluetooth_device_table[idx].address.addr[0], &evt->data.evt_prov_unprov_beacon.address.addr[0], BLE_ADDR_LEN_BYTE);
               memcpy(&bluetooth_device_table[idx].uuid.data[0], &evt->data.evt_prov_unprov_beacon.uuid.data[0], BLE_MESH_UUID_LEN_BYTE);
 
@@ -385,7 +494,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       printf(" getting dcd ...\n\r");
 
-      sc = sl_btmesh_config_client_get_dcd(network_id, provisionee_addr, 0, &handle);
+      sc = sl_btmesh_config_client_get_dcd(0x0000, provisionee_addr, 0, &handle);
       if (sc == 0x0181) {
         printf("."); fflush(stdout);
       } else if(sc != 0x0){
@@ -611,6 +720,7 @@ void provisionBLEMeshStack_app(eMesh_Prov_Node_t eStrategy)
 {
   uint8_t dev_idx; /* array index */
   sl_status_t sc;
+  printf("provisionBLEMeshStack_app");
 
   if(    ( eMESH_PROV_ALL == eStrategy )
       || ( eMESH_PROV_NEXT == eStrategy )
@@ -618,6 +728,7 @@ void provisionBLEMeshStack_app(eMesh_Prov_Node_t eStrategy)
   {
     for( dev_idx=0;dev_idx<MAX_NUM_BTMESH_DEV;dev_idx++ )
     {
+
       /* check if non null and unprovisioned */
       if(  (   ( 0x00 != bluetooth_device_table[dev_idx].address.addr[0] )
             || ( 0x00 != bluetooth_device_table[dev_idx].address.addr[1] )
@@ -628,6 +739,7 @@ void provisionBLEMeshStack_app(eMesh_Prov_Node_t eStrategy)
          && ( 0x00 == bluetooth_device_table[dev_idx].is_provisioned )
         )
       {
+          printf("provisionBLEMeshStack_app 123");
         /* provisioning using ADV bearer (this is the default) */
         sc = sl_btmesh_prov_provision_adv_device(bluetooth_device_table[dev_idx].uuid);
         if (sc == 0) {
@@ -676,6 +788,7 @@ static int8_t IsDevPresent(const uint8_t * restrict const addr)
       }
   }
 
+  printf("IsDevPresent\r\n");
   return res_val;
 }
 
@@ -714,3 +827,46 @@ static void config_check()
     }
   }
 }
+
+/*******************************************************************************
+ * Callbacks
+ ******************************************************************************/
+
+/***************************************************************************//**
+ * Button press Callbacks
+ ******************************************************************************/
+/*void app_button_press_cb(uint8_t button, uint8_t duration)
+{
+  // Selecting action by duration
+  switch (duration) {
+    case APP_BUTTON_PRESS_DURATION_SHORT:
+      // Handling of button press less than 0.25s
+      if (button == BUTTON_PRESS_BUTTON_0) {
+      } else {
+      }
+      break;
+    case APP_BUTTON_PRESS_DURATION_MEDIUM:
+      // Handling of button press greater than 0.25s and less than 1s
+      if (button == BUTTON_PRESS_BUTTON_0) {
+      } else {
+      }
+      break;
+    case APP_BUTTON_PRESS_DURATION_LONG:
+      // Handling of button press greater than 1s and less than 5s
+#ifdef SINGLE_BUTTON
+#else
+      if (button == BUTTON_PRESS_BUTTON_0) {
+      } else {
+      }
+#endif
+      break;
+    case APP_BUTTON_PRESS_DURATION_VERYLONG:
+      // Handling of button press greater than 5s
+      if (button == BUTTON_PRESS_BUTTON_0) {
+      } else {
+      }
+      break;
+    default:
+      break;
+  }
+}*/
