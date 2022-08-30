@@ -50,8 +50,8 @@
 #include "config.h"
 
 /* Buttons and LEDs headers */
-/*#include "app_button_press.h"
-#include "sl_simple_button.h"*/
+#include "app_button_press.h"
+#include "sl_simple_button.h"
 #include "sl_simple_button_instances.h"
 
 /***************************************************************************//**
@@ -146,6 +146,16 @@ SL_WEAK void app_init(void)
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
   app_log("Boot\n\r");
+
+  // Enable buttons
+  sl_simple_button_enable(&sl_button_btn0);
+#ifndef SINGLE_BUTTON
+  sl_simple_button_enable(&sl_button_btn1);
+#endif // SINGLE_BUTTON
+  // Wait
+  sl_sleeptimer_delay_millisecond(1);
+  // Enable button presses
+  app_button_press_enable();
 }
 
 /*******************************************************************************
@@ -345,7 +355,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
   sl_status_t sc;
   uint32_t handle;
 
-  app_log("event: 0x%x ", SL_BT_MSG_ID(evt->header));
+  //app_log("event: 0x%x ", SL_BT_MSG_ID(evt->header));
 
   switch (SL_BT_MSG_ID(evt->header)) {
       /*case sl_bt_evt_system_boot_id:
@@ -378,7 +388,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       break;
     case sl_btmesh_evt_prov_initialized_id: {
       app_log("sl_btmesh_evt_prov_initialized_id");
-      network_id = 0x8;//new_netkey_rsp->network_id;
+      network_id = 0x0;//new_netkey_rsp->network_id;
       sc = sl_btmesh_prov_create_network(network_id, 16, fixed_netkey);
       if(0 != sc)
       {
@@ -416,8 +426,6 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       app_log("ivi: 0x%lx", evt->data.evt_prov_initialized.iv_index);
       app_log("\n\r");
 
-      app_log("Unprovisioned beacons scan");
-
       /* Scan for unprovisioned beacons */
       result = sl_btmesh_prov_scan_unprov_beacons();
       }
@@ -426,8 +434,6 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       app_log("failed: 0x%x ", evt->data.evt_prov_initialization_failed.result);
     break;
     case sl_btmesh_evt_prov_unprov_beacon_id:
-
-      app_log("Unprovisioned something");
       /* PB-ADV only */
       if(0 == evt->data.evt_prov_unprov_beacon.bearer)
       {
@@ -448,27 +454,31 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
                && ( 0x00 == bluetooth_device_table[idx].address.addr[5] )
               )
             {
-                app_log("To be prov");
               memcpy(&bluetooth_device_table[idx].address.addr[0], &evt->data.evt_prov_unprov_beacon.address.addr[0], BLE_ADDR_LEN_BYTE);
               memcpy(&bluetooth_device_table[idx].uuid.data[0], &evt->data.evt_prov_unprov_beacon.uuid.data[0], BLE_MESH_UUID_LEN_BYTE);
 
+              //or (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("0x%x:", evt->data.evt_prov_unprov_beacon.uuid.data[i]);
+
               /* Display info banner */
-              printf("URI hash: 0x%lx ",evt->data.evt_prov_unprov_beacon.uri_hash);
-              printf("bearer: 0x%x ",evt->data.evt_prov_unprov_beacon.bearer);
-              printf("address: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x ",bluetooth_device_table[idx].address.addr[0],
+              app_log("URI hash: 0x%lx ",evt->data.evt_prov_unprov_beacon.uri_hash);
+              app_log("bearer: 0x%x ",evt->data.evt_prov_unprov_beacon.bearer);
+              app_log("address: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x ",bluetooth_device_table[idx].address.addr[0],
                                                                bluetooth_device_table[idx].address.addr[1],
                                                                bluetooth_device_table[idx].address.addr[2],
                                                                bluetooth_device_table[idx].address.addr[3],
                                                                bluetooth_device_table[idx].address.addr[4],
                                                                bluetooth_device_table[idx].address.addr[5]);
-              printf("UUID: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x ",bluetooth_device_table[idx].uuid.data[0],
+              /*app_log("UUID: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x ",bluetooth_device_table[idx].uuid.data[0],
                                                             bluetooth_device_table[idx].uuid.data[1],
                                                             bluetooth_device_table[idx].uuid.data[2],
                                                             bluetooth_device_table[idx].uuid.data[3],
                                                             bluetooth_device_table[idx].uuid.data[4],
-                                                            bluetooth_device_table[idx].uuid.data[5]);
-              printf("address type: 0x%x",evt->data.evt_prov_unprov_beacon.address_type);
-              printf("\n\r");
+                                                            bluetooth_device_table[idx].uuid.data[5]);*/
+              app_log("(net id) %d (uuid) ",network_id);
+              for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("0x%x:", bluetooth_device_table[idx].uuid.data[i]);
+              app_log("\r\n");
+              app_log("address type: 0x%x",evt->data.evt_prov_unprov_beacon.address_type);
+              app_log("\n\r");
               break;
             }
           }
@@ -478,7 +488,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       break;
     /* Provisioning */
     case sl_btmesh_evt_prov_provisioning_failed_id:
-      printf("provisioning failed\n\r");
+      app_log("provisioning failed\n\r");
       break;
     case sl_btmesh_evt_prov_device_provisioned_id:
 
@@ -486,32 +496,32 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       provisionee_addr = evt->data.evt_prov_device_provisioned.address;
       provisionee_uuid = evt->data.evt_prov_device_provisioned.uuid;
-      printf("Node successfully provisioned. Address: %4.4x, ", provisionee_addr);
+      app_log("Node successfully provisioned. Address: %4.4x, ", provisionee_addr);
 
-      printf("uuid 0x");
-      for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) printf("%02X", provisionee_uuid.data[i]);
-      printf("\r\n");
+      app_log("uuid 0x");
+      for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("%02X", provisionee_uuid.data[i]);
+      app_log("\r\n");
 
-      printf(" getting dcd ...\n\r");
+      app_log(" getting dcd ...\n\r");
 
-      sc = sl_btmesh_config_client_get_dcd(0x0000, provisionee_addr, 0, &handle);
+      sc = sl_btmesh_config_client_get_dcd(network_id, provisionee_addr, 0, &handle);
       if (sc == 0x0181) {
-        printf("."); fflush(stdout);
+        app_log("."); fflush(stdout);
       } else if(sc != 0x0){
-        printf("sl_btmesh_config_client_get_dcd failed with result 0x%lX (%ld) addr %x\r\n", sc, sc, provisionee_addr);
+        app_log("sl_btmesh_config_client_get_dcd failed with result 0x%lX (%ld) addr %x\r\n", sc, sc, provisionee_addr);
       }
       else
       {
-        printf("requesting DCD from the node...\r\n");
+        app_log("requesting DCD from the node...\r\n");
       }
 
       break;
 
     /* Config events */
     case sl_btmesh_evt_config_client_dcd_data_id:
-      printf(" DCD event ...\n\r");
+      app_log(" DCD event ...\n\r");
       pDCD = &evt->data.evt_config_client_dcd_data;
-      printf("DCD data event, received %u bytes\r\n", pDCD->data.len);
+      app_log("DCD data event, received %u bytes\r\n", pDCD->data.len);
 
       // copy the data into one large array. the data may come in multiple smaller pieces.
       // the data is not decoded until all DCD events have been received (see below)
@@ -523,11 +533,11 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       break;
     case sl_bt_evt_connection_opened_id:
-      printf("LE connection opened\r\n");
+      app_log("LE connection opened\r\n");
       break;
 
     case sl_btmesh_evt_config_client_dcd_data_end_id:
-      printf("DCD data end event. Decoding the data.\r\n");
+      app_log("DCD data end event. Decoding the data.\r\n");
       // decode the DCD content
       DCD_decode();
 
@@ -536,9 +546,9 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       sc = sl_btmesh_config_client_add_appkey(network_id, provisionee_addr, appkey_index, network_id, &handle);
       if (sc == 0) {
-        printf("Deploying appkey to node 0x%4.4x\r\n", provisionee_addr);
+        app_log("Deploying appkey to node 0x%4.4x\r\n", provisionee_addr);
       }else{
-        printf("Appkey deployment failed. addr %x, error: %lx\r\n", provisionee_addr, sc);
+        app_log("Appkey deployment failed. addr %x, error: %lx\r\n", provisionee_addr, sc);
       }
 
       break;
@@ -546,7 +556,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       result = evt->data.evt_config_client_appkey_status.result;
       if(result == 0)
       {
-        printf(" appkey added\r\n");
+        app_log(" appkey added\r\n");
         /* move to next step which is binding appkey to models */
 
         // take the next model from the list of models to be bound with application key.
@@ -554,7 +564,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         model_id = _sConfig.bind_model[_sConfig.num_bind_done].model_id;
         vendor_id = _sConfig.bind_model[_sConfig.num_bind_done].vendor_id;
 
-        printf("APP BIND, config %d/%d:: model %4.4x key index %x\r\n", _sConfig.num_bind_done+1, _sConfig.num_bind, model_id, appkey_index);
+        app_log("APP BIND, config %d/%d:: model %4.4x key index %x\r\n", _sConfig.num_bind_done+1, _sConfig.num_bind, model_id, appkey_index);
 
         sc = sl_btmesh_config_client_bind_model( network_id, provisionee_addr, 0, // element index
                                                                          appkey_index, vendor_id, model_id, &handle );
@@ -564,7 +574,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       result = evt->data.evt_config_client_appkey_status.result;
       if(result != SL_STATUS_OK)
       {
-        printf(" bind complete\r\n");
+        app_log(" bind complete\r\n");
         _sConfig.num_bind_done++;
 
         if(_sConfig.num_bind_done < _sConfig.num_bind)
@@ -574,7 +584,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
           model_id = _sConfig.bind_model[_sConfig.num_bind_done].model_id;
           vendor_id = _sConfig.bind_model[_sConfig.num_bind_done].vendor_id;
 
-          printf("APP BIND, config %d/%d:: model %4.4x key index %x\r\n", _sConfig.num_bind_done+1, _sConfig.num_bind, model_id, appkey_index);
+          app_log("APP BIND, config %d/%d:: model %4.4x key index %x\r\n", _sConfig.num_bind_done+1, _sConfig.num_bind, model_id, appkey_index);
 
           sc = sl_btmesh_config_client_bind_model( network_id, provisionee_addr, 0, // element index
                                                                            appkey_index, vendor_id, model_id, &handle );
@@ -586,7 +596,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
           vendor_id = _sConfig.pub_model[_sConfig.num_pub_done].vendor_id;
           pub_address = _sConfig.pub_address[_sConfig.num_pub_done];
 
-          printf("PUB SET, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_pub_done+1, _sConfig.num_pub, model_id, pub_address);
+          app_log("PUB SET, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_pub_done+1, _sConfig.num_pub, model_id, pub_address);
 
           sc = sl_btmesh_config_client_set_model_pub(network_id, provisionee_addr,
             0, /* element index */
@@ -603,20 +613,20 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
           if (sc == 0)
           {
-            printf(" waiting pub ack\r\n");
+            app_log(" waiting pub ack\r\n");
           }
         }
       }
       else
       {
-        printf(" appkey bind failed with code \r\n");
+        app_log(" appkey bind failed with code \r\n");
       }
       break;
     case sl_btmesh_evt_config_client_model_pub_status_id:
       result = evt->data.evt_config_client_model_pub_status.result;
       if(result != SL_STATUS_OK)
       {
-        printf(" pub set OK\r\n");
+        app_log(" pub set OK\r\n");
         _sConfig.num_pub_done++;
 
         if(_sConfig.num_pub_done < _sConfig.num_pub)
@@ -627,7 +637,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
           vendor_id = _sConfig.pub_model[_sConfig.num_pub_done].vendor_id;
           pub_address = _sConfig.pub_address[_sConfig.num_pub_done];
 
-          printf("PUB SET, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_pub_done+1, _sConfig.num_pub, model_id, pub_address);
+          app_log("PUB SET, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_pub_done+1, _sConfig.num_pub, model_id, pub_address);
 
           sc = sl_btmesh_config_client_set_model_pub(network_id, provisionee_addr,
             0, /* element index */
@@ -650,13 +660,13 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
           vendor_id = _sConfig.sub_model[_sConfig.num_sub_done].vendor_id;
           sub_address = _sConfig.sub_address[_sConfig.num_sub_done];
 
-          printf("SUB ADD, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_sub_done+1, _sConfig.num_sub, model_id, sub_address);
+          app_log("SUB ADD, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_sub_done+1, _sConfig.num_sub, model_id, sub_address);
 
           sc = sl_btmesh_config_client_add_model_sub(network_id, provisionee_addr, 0, vendor_id, model_id, sub_address, &handle);
 
           if (sc == 0x00)
           {
-            printf(" waiting sub ack\r\n");
+            app_log(" waiting sub ack\r\n");
           }
         }
       }
@@ -665,7 +675,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       result = evt->data.evt_config_client_model_sub_status.result;
       if(result != SL_STATUS_OK)
       {
-        printf(" sub add OK\r\n");
+        app_log(" sub add OK\r\n");
         _sConfig.num_sub_done++;
         if(_sConfig.num_sub_done < _sConfig.num_sub)
         {
@@ -675,39 +685,39 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
           vendor_id = _sConfig.sub_model[_sConfig.num_sub_done].vendor_id;
           sub_address = _sConfig.sub_address[_sConfig.num_sub_done];
 
-          printf("SUB ADD, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_sub_done+1, _sConfig.num_sub, model_id, sub_address);
+          app_log("SUB ADD, config %d/%d: model %4.4x -> address %4.4x\r\n", _sConfig.num_sub_done+1, _sConfig.num_sub, model_id, sub_address);
 
           sc = sl_btmesh_config_client_add_model_sub(network_id, provisionee_addr, 0, vendor_id, model_id, sub_address, &handle);
 
           if (sc == 0x00)
           {
-            printf(" waiting sub ack\r\n");
+            app_log(" waiting sub ack\r\n");
           }
         }
         else
         {
-          printf("***\r\nconfiguration complete\r\n***\r\n");
+          app_log("***\r\nconfiguration complete\r\n***\r\n");
         }
       }
 
       break;
     /*case gecko_evt_mesh_prov_dcd_status_id:
-      printf("dcd status received\n\r");
+      app_log("dcd status received\n\r");
       break;
     case gecko_evt_mesh_prov_config_status_id:
-      printf("prov config status\n\r");
+      app_log("prov config status\n\r");
       break;
     case gecko_evt_le_gap_adv_timeout_id:
       // adv timeout events silently discarded
       break;
     default:*/
-      printf("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", (unsigned int)SL_BT_MSG_ID(evt->header),
+      app_log("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", (unsigned int)SL_BT_MSG_ID(evt->header),
                                                                   (unsigned int)((SL_BT_MSG_ID(evt->header) >> 16) & 0xFF),
                                                                   (unsigned int)((SL_BT_MSG_ID(evt->header) >> 24) & 0xFF) );
 
       if(sc  == 0x0000)
       {
-        printf(" waiting bind ack\r\n");
+        app_log(" waiting bind ack\r\n");
       }
 
       break;
@@ -720,7 +730,7 @@ void provisionBLEMeshStack_app(eMesh_Prov_Node_t eStrategy)
 {
   uint8_t dev_idx; /* array index */
   sl_status_t sc;
-  printf("provisionBLEMeshStack_app");
+  app_log("provisionBLEMeshStack_app\r\n");
 
   if(    ( eMESH_PROV_ALL == eStrategy )
       || ( eMESH_PROV_NEXT == eStrategy )
@@ -739,19 +749,19 @@ void provisionBLEMeshStack_app(eMesh_Prov_Node_t eStrategy)
          && ( 0x00 == bluetooth_device_table[dev_idx].is_provisioned )
         )
       {
-          printf("provisionBLEMeshStack_app 123");
         /* provisioning using ADV bearer (this is the default) */
+        sl_btmesh_prov_create_provisioning_session(network_id, bluetooth_device_table[dev_idx].uuid, 0);
         sc = sl_btmesh_prov_provision_adv_device(bluetooth_device_table[dev_idx].uuid);
         if (sc == 0) {
-          printf("Provisioning success : ");
+          app_log("Provisioning success : ");
           bluetooth_device_table[dev_idx].is_provisioned=0x01;
         } else {
-          printf("Provisioning fail %ld: ",sc);
+          app_log("Provisioning fail %X: ",sc);
         }
 
-        printf("(net id) %d (uuid) ",network_id);
-        for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) printf("0x%.2x", bluetooth_device_table[dev_idx].uuid.data[i]);
-        printf("\r\n");
+        app_log("(net id) %d (uuid) ",network_id);
+        for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("0x%.2x", bluetooth_device_table[dev_idx].uuid.data[i]);
+        app_log("\r\n");
 
         break;
       }
@@ -788,7 +798,6 @@ static int8_t IsDevPresent(const uint8_t * restrict const addr)
       }
   }
 
-  printf("IsDevPresent\r\n");
   return res_val;
 }
 
@@ -835,7 +844,7 @@ static void config_check()
 /***************************************************************************//**
  * Button press Callbacks
  ******************************************************************************/
-/*void app_button_press_cb(uint8_t button, uint8_t duration)
+void app_button_press_cb(uint8_t button, uint8_t duration)
 {
   // Selecting action by duration
   switch (duration) {
@@ -849,6 +858,7 @@ static void config_check()
       // Handling of button press greater than 0.25s and less than 1s
       if (button == BUTTON_PRESS_BUTTON_0) {
       } else {
+
       }
       break;
     case APP_BUTTON_PRESS_DURATION_LONG:
@@ -857,6 +867,7 @@ static void config_check()
 #else
       if (button == BUTTON_PRESS_BUTTON_0) {
       } else {
+          provisionBLEMeshStack_app(eMESH_PROV_NEXT);
       }
 #endif
       break;
@@ -869,4 +880,4 @@ static void config_check()
     default:
       break;
   }
-}*/
+}

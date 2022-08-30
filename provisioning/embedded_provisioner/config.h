@@ -37,7 +37,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "bg_types.h"
+//#include "bg_types.h"
 
 // max number of SIG models in the DCD
 #define MAX_SIG_MODELS    16

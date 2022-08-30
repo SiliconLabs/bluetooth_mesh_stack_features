@@ -40,12 +40,12 @@
 
 /* This will be the model agregator: config and load model */
 #include "config.h"
-#include "bg_types.h"
+//#include "bg_types.h"
 
 // DCD content of the last provisioned device. (the example code decodes up to two elements, but
 // only the primary element is used in the configuration to simplify the code)
-tsDCD_ElemContent _sDCD_Prim;
-tsDCD_ElemContent _sDCD_2nd; /* second DCD element is decoded if present, but not used for anything (just informative) */
+tsDCD_ElemContent _sDCD_Prim_t;
+tsDCD_ElemContent _sDCD_2nd_t; /* second DCD element is decoded if present, but not used for anything (just informative) */
 
 extern uint8_t _dcd_raw[256]; // raw content of the DCD received from remote node
 extern uint8_t _dcd_raw_len;
@@ -65,7 +65,7 @@ void DCD_decode(void)
   pElem = (tsDCD_Elem *)pHeader->payload;
 
   // decode primary element:
-  DCD_decode_element(pElem, &_sDCD_Prim);
+  DCD_decode_element(pElem, &_sDCD_Prim_t);
 
   // check if DCD has more than one element by calculating where we are currently at the raw
   // DCD array and compare against the total size of the raw DCD:
@@ -77,7 +77,7 @@ void DCD_decode(void)
     pElem = (tsDCD_Elem *)&(_dcd_raw[byte_offset]);
 
     printf("Decoding 2nd element (just informative, not used for anything)\r\n");
-    DCD_decode_element(pElem, &_sDCD_2nd);
+    DCD_decode_element(pElem, &_sDCD_2nd_t);
   }
 }
 
