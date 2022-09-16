@@ -29,7 +29,7 @@ override INCLUDEPATHS += . \
 $(SDK_DIR)/app/bluetooth/common_host/system \
 $(SDK_DIR)/platform/common/inc \
 $(SDK_DIR)/platform/emlib/host/inc \
-$(SDK_DIR)/util/silicon_labs/silabs_core/memory_manager \
+$(SDK_DIR)/util/silicon_labs/silabs_core/memory_manager
 
 
 ################################################################################
