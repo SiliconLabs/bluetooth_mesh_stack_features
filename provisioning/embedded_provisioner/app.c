@@ -144,7 +144,7 @@ SL_WEAK void app_init(void)
   // Put your additional application init code here!                         //
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
-  app_log("Boot\n\r");
+  app_log("Boot\r\n");
 
   // Enable buttons
   sl_simple_button_enable(&sl_button_btn0);
@@ -306,10 +306,10 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
       handle_boot_event();
       break;
     case sl_bt_evt_connection_opened_id:
-      app_log("Connection opened\n\r");
+      app_log("Connection opened\r\n");
       break;
     case sl_bt_evt_connection_closed_id:
-      app_log("Connection closed\n\r");
+      app_log("Connection closed\r\n");
       break;
     default:
       break;
@@ -343,11 +343,11 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       sl_btmesh_initiate_full_reset();
       break;
     case sl_btmesh_evt_prov_initialized_id: {
-      app_log("sl_btmesh_evt_prov_initialized_id");
+      app_log("sl_btmesh_evt_prov_initialized_id\r\n");
       sc = sl_btmesh_prov_create_network(network_id, 16, fixed_netkey);
       if(sc != SL_STATUS_OK) {
         /* Something went wrong */
-          app_log("sl_btmesh_prov_create_network: failed 0x%.2lx\n\r", sc);
+          app_log("sl_btmesh_prov_create_network: failed 0x%.2lx\r\n", sc);
       } else {
           app_log("Success, netkey id = %x\r\n", network_id);
       }
@@ -359,7 +359,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       if(sc != SL_STATUS_OK) {
         /* Something went wrong */
-          app_log("sl_btmesh_prov_create_appkey: failed 0x%.2lx\n\r", sc);
+          app_log("sl_btmesh_prov_create_appkey: failed 0x%.2lx\r\n", sc);
       } else {
           app_log("Success, appkey id = %x\r\n", appkey_index);
       }
@@ -372,7 +372,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       /* ivi  */
       app_log("ivi: 0x%lx", evt->data.evt_prov_initialized.iv_index);
-      app_log("\n\r");
+      app_log("\r\n");
 
       /* Scan for unprovisioned beacons */
       result = sl_btmesh_prov_scan_unprov_beacons();
@@ -414,7 +414,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
               for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("0x%x:", bluetooth_device_table[idx].uuid.data[i]);
               app_log("\r\n");
               app_log("address type: 0x%x",evt->data.evt_prov_unprov_beacon.address_type);
-              app_log("\n\r");
+              app_log("\r\n");
               break;
             }
           }
@@ -424,7 +424,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       break;
     /* Provisioning */
     case sl_btmesh_evt_prov_provisioning_failed_id:
-      app_log("provisioning failed\n\r");
+      app_log("provisioning failed\r\n");
       break;
     case sl_btmesh_evt_prov_device_provisioned_id:
       provisionee_addr = evt->data.evt_prov_device_provisioned.address;
@@ -435,7 +435,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("%02X", provisionee_uuid.data[i]);
       app_log("\r\n");
 
-      app_log(" getting dcd ...\n\r");
+      app_log(" getting dcd ...\r\n");
 
       sc = sl_btmesh_config_client_get_dcd(network_id, provisionee_addr, 0, &handle);
       if (sc == 0x0181) {

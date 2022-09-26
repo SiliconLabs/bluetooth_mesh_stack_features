@@ -48,7 +48,7 @@ This project README assumes that the reader is familiar with the usage of Silico
  
   <img src="images/add_config_client_model.png">
 
-  - Increase the field values meant to store the data for Provisioned Devices (0 by default)
+  - Increase the field values meant to store the data for Provisioned Devices (0 by default) at Bluetooth Mesh > Bluetooth Mesh Stack as per your needs
     - Maximum number of provisioned devices allowed
     - Maximum number of Application Keys allowed for each Provisioned Device
     - Maximum number of Network Keys allowed for each Provisioned Device
@@ -60,7 +60,7 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   - When everything is configured, build and flash the project
   - Flash the other board with ```Bluetooth Mesh - SoC Empty``` example project
-  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 1``` on the Provisioner device, you can provision the newley noticed device into your network. If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node.
+  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network. If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node.
 
   <img src="images/dcd_infos.png">
 

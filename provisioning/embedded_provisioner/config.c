@@ -39,6 +39,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "app_log.h"
+
 /* This will be the model agregator: config and load model */
 #include "config.h"
 
