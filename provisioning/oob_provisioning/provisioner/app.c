@@ -100,6 +100,8 @@ tsDCD_ElemContent _sDCD_2nd; /* second DCD element is decoded if present, but no
 /// Used button index
 #define BUTTON_PRESS_BUTTON_1          1
 
+#define OOB_AUTHVALUE_LEN              20
+
 #ifdef SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 #define lcd_print(...) sl_btmesh_LCD_write(__VA_ARGS__)
 #else
@@ -347,9 +349,9 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       sc = sl_btmesh_prov_create_network(network_id, 16, fixed_netkey);
       if(sc != SL_STATUS_OK) {
         /* Something went wrong */
-        app_log("sl_btmesh_prov_create_network: failed 0x%.2lx\r\n", sc);
+          app_log("sl_btmesh_prov_create_network: failed 0x%.2lx\r\n", sc);
       } else {
-        app_log("Success, netkey id = %x\r\n", network_id);
+          app_log("Success, netkey id = %x\r\n", network_id);
       }
 
       size_t max_application_key_size = 16;
@@ -359,9 +361,9 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       if(sc != SL_STATUS_OK) {
         /* Something went wrong */
-        app_log("sl_btmesh_prov_create_appkey: failed 0x%.2lx\r\n", sc);
+          app_log("sl_btmesh_prov_create_appkey: failed 0x%.2lx\r\n", sc);
       } else {
-        app_log("Success, appkey id = %x\r\n", appkey_index);
+          app_log("Success, appkey id = %x\r\n", appkey_index);
       }
 
       /* Networks  */
@@ -468,6 +470,10 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         evt->data.evt_prov_oob_display_input.data.data[13],
         evt->data.evt_prov_oob_display_input.data.data[14],
         evt->data.evt_prov_oob_display_input.data.data[15]);
+
+      char oob_authvalue[OOB_AUTHVALUE_LEN];
+      snprintf(oob_authvalue, OOB_AUTHVALUE_LEN, "OOB AuthValue: %d", evt->data.evt_prov_oob_display_input.data.data[15]);
+      lcd_print(oob_authvalue, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
 
       break;
 
