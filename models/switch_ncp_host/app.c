@@ -569,8 +569,6 @@ void lpn_init(void)
 
   app_log("Trying to find friend...\r\n");
   result = sl_btmesh_lpn_establish_friendship(0);
-  app_log("Firendifriend\r\n");
-
 
   if (result != 0) {
     app_log("ret.code %x\r\n", result);
@@ -611,7 +609,6 @@ void *pConsoleThread(void *pIn)
     app_log("$ ");
     getCMD();
     usleep(80 * 1000);
-    //app_log("Queue %d\r\n", isTimerElapsed());
   }
   return NULL;
 }
@@ -619,10 +616,8 @@ void *pConsoleThread(void *pIn)
 void *pAppMainThread(void *pIn)
 {
   for (;;) {
-    //app_log("Test");
     execCMD();
     if(isTimerElapsed()) {
-      app_log("Elapsed\r\n");
       timerHandle(getElapsedTimer());
     }
   };
@@ -631,11 +626,9 @@ void *pAppMainThread(void *pIn)
 }
 
 void timerHandle(int handle) {
-  app_log("Timerhandle %d\r\n", handle);
   uint16_t result = 0;
   switch (handle) {
     case TIMER_ID_RETRANS:
-      app_log("operation %d\r\n", operation);
       switch (operation) {
         case onoffReq:
           send_onoff_request(1); // param 1 indicates that this is a retransmission
@@ -749,9 +742,7 @@ static int execCMD(void)
   char **argv = NULL;
   int valid = 0, argc, err = 0;
 
-  //app_log("Buff.\r\n");
   pthread_mutex_lock(&commandBufMutex);
-  //app_log("Buff.\r\n");
   if (BUF_PENDING()) {
     strcpy(locBuf, commandBuf[bufReadOffset]);
     app_log_debug("Echo CMD [%s]\r\n",
@@ -881,7 +872,6 @@ void send_onoff_request(int retrans)
    */
   delay = (request_count - 1) * 50;
 
-  app_log("Message sent 1");
   resp = mesh_lib_generic_client_publish(
     MESH_GENERIC_ON_OFF_CLIENT_MODEL_ID,
     elemIndex,
@@ -891,7 +881,6 @@ void send_onoff_request(int retrans)
     delay,
     0     // flags
     );
-  app_log("Response returned 1");
 
   if (resp) {
     app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
@@ -936,7 +925,6 @@ void send_lightness_request(int retrans)
    */
   delay = (request_count - 1) * 50;
 
-  app_log("Message sent 2");
   resp = mesh_lib_generic_client_publish(
     MESH_LIGHTING_LIGHTNESS_CLIENT_MODEL_ID,
     elemIndex,
@@ -946,7 +934,6 @@ void send_lightness_request(int retrans)
     delay,
     0     // flags
     );
-  app_log("Response returned 2");
 
   if (resp) {
     app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
@@ -995,7 +982,6 @@ void send_ctl_request(int retrans)
    */
   delay = (request_count - 1) * 50;
 
-  app_log("Message sent 3");
   resp = mesh_lib_generic_client_publish(
     MESH_LIGHTING_CTL_CLIENT_MODEL_ID,
     elemIndex,
@@ -1005,7 +991,6 @@ void send_ctl_request(int retrans)
     delay,
     0     // flags
     );
-  app_log("Response returned 3");
 
   if (resp) {
     app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
