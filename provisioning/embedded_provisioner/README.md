@@ -44,7 +44,10 @@ This project README assumes that the reader is familiar with the usage of Silico
     - Application > Utility > Button Press
     - Bluetooth Mesh > Stack Classes > Provisioner
     - Bluetooth Mesh > Stack Classes > Configuration Client
-  - Add the Configuration Client Model in the Bluetooth Mesh Configurator to the Main Element (skipping this would result in SL_STATUS_BT_MESH_DOES_NOT_EXIST ((sl_status_t)0x0502))  
+
+  <img src="images/install_button_press.png">
+
+  - Add the Configuration Client Model in the Bluetooth Mesh Configurator to the Main Element (skipping this would result in SL_STATUS_BT_MESH_DOES_NOT_EXIST ((sl_status_t)0x0502))
  
   <img src="images/add_config_client_model.png">
 
