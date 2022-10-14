@@ -2,3 +2,4 @@
 .gradle
 .DS_Store
 .externalNativeBuild
+/.DS_Store
