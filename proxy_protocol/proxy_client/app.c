@@ -3,414 +3,371 @@
  * @brief Application code
  *******************************************************************************
  * # License
- * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
- * The licensor of this software is Silicon Laboratories Inc. Your use of this
- * software is governed by the terms of Silicon Labs Master Software License
- * Agreement (MSLA) available at
- * www.silabs.com/about-us/legal/master-software-license-agreement. This
- * software is distributed to you in Source Code format and is governed by the
- * sections of the MSLA applicable to Source Code.
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
 
-/* C Standard Library headers */
+#include <stdbool.h>
 #include <stdio.h>
+#include "em_common.h"
+#include "sl_status.h"
 
-/* Bluetooth stack headers */
-#include "bg_types.h"
-#include "native_gecko.h"
-#include "gatt_db.h"
-#include "mesh_generic_model_capi_types.h"
-#include "mesh_lib.h"
-
-/* GPIO peripheral library */
-#include <em_gpio.h>
-#include "em_core.h"
-
-/* Lightbulb with mesh models */
-#include "lightbulb.h"
-
-/* Display Interface header */
-#include "display_interface.h"
-
-/* LED driver with support for PWM dimming */
-#include "led_driver.h"
-
-/* Own header */
+#include "sl_btmesh.h"
+#include "sl_bluetooth.h"
 #include "app.h"
+#include "app_assert.h"
+#include "app_log.h"
 
-#define USE_LOG_MODULE
+#include "gatt_db.h"
 
-#ifdef USE_LOG_MODULE
-#undef SUB_MODULE_NAME
-#define SUB_MODULE_NAME "proxy_c"
-#include "log.h"
+#include "sl_simple_timer.h"
+
+/* Buttons and LEDs headers */
+#include "sl_simple_button_instances.h"
+
+#ifdef SL_COMPONENT_CATALOG_PRESENT
+#include "sl_component_catalog.h"
+#endif // SL_COMPONENT_CATALOG_PRESENT
+
+#ifdef SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
+#include "sl_btmesh_wstk_lcd.h"
+#endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
+
+/* Light app headers */
+#include "sl_btmesh_ctl_server_config.h"
+#include "sl_btmesh_lighting_server_config.h"
+#include "sl_btmesh_lc_server_config.h"
+#include "sl_btmesh_factory_reset.h"
+
+#include "app_led.h"
+#include "sl_btmesh_provisioning_decorator.h"
+
+#ifdef SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
+#define lcd_print(...) sl_btmesh_LCD_write(__VA_ARGS__)
 #else
-#define INIT_LOG()
-#define LOGD(...) printf(__VA_ARGS__)
-#define LOGI(...) printf(__VA_ARGS__)
-#define LOGW(...) printf(__VA_ARGS__)
-#define SE_CALL(x)  (x)
+#define lcd_print(...)
+#endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
+
 #define UINT8_ARRAY_DUMP(array_base, array_size)                                    \
   do {                                                                              \
     for (int i_log_exlusive = 0; i_log_exlusive < (array_size); i_log_exlusive++) { \
-      printf((i_log_exlusive + 1) % 16 ? "%02X " : "%02X\n",                        \
+      app_log((i_log_exlusive + 1) % 16 ? "%02X " : "%02X\r\n",                        \
              ((char*)(array_base))[i_log_exlusive]); }                              \
-    printf("\n");                                                                   \
+    app_log("\r\n");                                                                   \
   } while (0)
-#define ERROR_ADDRESSING()                                         \
-  do {                                                             \
-    printf("  |--> File - %s, Line - %d\r\n", __FILE__, __LINE__); \
-  } while (0)
-#endif
-/***********************************************************************************************//**
- * @addtogroup Application
- * @{
- **************************************************************************************************/
 
-/***********************************************************************************************//**
- * @addtogroup app
- * @{
- **************************************************************************************************/
-/******************************************************************
- * Added by Kevin
- * ***************************************************************/
-CORE_DECLARE_IRQ_STATE;
-#define ASSERT(x) if (!(x)) { CORE_ENTER_ATOMIC(); while (1); }
+/// High Priority
+#define HIGH_PRIORITY                  0
+/// No Timer Options
+#define NO_FLAGS                       0
+/// Callback has no parameters
+#define NO_CALLBACK_DATA               (void *)NULL
+/// Timeout for Blinking LED during provisioning
+#define APP_LED_BLINKING_TIMEOUT       250
+/// Connection uninitialized
+#define UNINITIALIZED_CONNECTION       0xFF
+/// Advertising Provisioning Bearer
+#define PB_ADV                         0x1
+/// GATT Provisioning Bearer
+#define PB_GATT                        0x2
+/// LED switched off (lightness = 0)
+#define LED_LEVEL_OFF                  0
+/// Length of the display name buffer
+#define NAME_BUF_LEN                   20
+/// Length of boot error message buffer
+#define BOOT_ERR_MSG_BUF_LEN           30
+
 /*
  * ADV bearer should be disabled to save power
  */
-#define ADV_BEARER_STATE  0
-
-#define USE_FAKE_NETWORK_ID 1
+#define ADV_BEARER_STATE               0
 
 /*
  * Default connection parameters
  */
-/* Interval (ms) = value * 1.25 */
-#define MIN_CONN_INTERVAL 100
-#define MAX_CONN_INTERVAL 200
-#define CONN_LATENCY  0
-/* Timeout (ms) = value * 10 */
-#define CONN_SPV_TIMEOUT  200
-/* Use default value for the timing of connection events */
-#define MIN_CE_LENGTH 0
-#define MAX_CE_LENGTH 0xffff
 
 /* Interval (ms) = value * 0.625 */
-#define SCAN_INTERVAL 100
-#define SCAN_WINDOW 100
+#define SCAN_INTERVAL                  100
+#define SCAN_WINDOW                    100
 
-#define PASSIVE_SCAN  0
-#define ACTIVE_SCAN 1
-#define SCAN_TYPE PASSIVE_SCAN
+#define PASSIVE_SCAN                   0
+#define ACTIVE_SCAN                    1
+#define SCAN_TYPE                      PASSIVE_SCAN
 
-#define PROXY_FILTER_WHITELIST  0
-#define PROXY_FILTER_BLACKLIST  1
-
-#define PROXY_SERVICE_UUID  "\x28\x18"
-#define ADV_TYPE_16BIT_SERVICE  0x16
+#define PROXY_FILTER_WHITELIST         0
+#define PROXY_FILTER_BLACKLIST         1
 
 #define TIMER_ID_DELAY_TURN_OFF_ADV_BEARER  62
-#define DELAY_TURN_OFF_ADV_BEARER_IN_TICKS (4 * 32768)
-#define TIMER_ID_DELAY_PROXY_CONN 63
-#define DELAY_PROXY_CONN_IN_TICKS (1 * 32768)
+#define DELAY_TURN_OFF_ADV_BEARER_IN_TICKS  (4 * 32768)
+#define TIMER_ID_DELAY_PROXY_CONN           63
+#define DELAY_PROXY_CONN_IN_TICKS           (1 * 32768)
 
-#if (USE_FAKE_NETWORK_ID == 1)
-static const uint8_t dummy_network_id[8] = "\x54\x3b\xeb\x54\x36\x5a\xa1\x0d";
-#else
-static const uint8_t target_server_node_bd_addr[6] = "\x00\x0b\x57\xef\x01\x3d";
-#endif
-
-static uint32_t proxy_handle = 0xffff;
+static const bd_addr target_server_node_bd_addr = {{0xa1, 0x92, 0xc5, 0xf9, 0xe3, 0xb4}};
 
 /*******************************************************************************
  * Timer handles defines.
  ******************************************************************************/
-#define TIMER_ID_RESTART    78
-#define TIMER_ID_FACTORY_RESET  77
-#define TIMER_ID_PROVISIONING   66
+#define TIMER_ID_RESTART               78
 
+sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_proxy_conn_1;
+sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_proxy_conn_2;
+sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_turn_off_adv_bearer_1;
+sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_turn_off_adv_bearer_2;
+sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_turn_off_adv_bearer_3;
+sl_sleeptimer_timer_handle_t sleep_timer_restart_1;
+
+void sleeptimer_callback(sl_sleeptimer_timer_handle_t *handle, void *data);
+
+// periodic timer handle
+static sl_simple_timer_t app_led_blinking_timer;
+
+// periodic timer callback
+static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data);
+
+
+
+/*******************************************************************************
+ * Global variables
+ ******************************************************************************/
+
+static uint32_t proxy_handle = 0xFFFF;
 /// Flag for indicating DFU Reset must be performed
 static uint8_t boot_to_dfu = 0;
 /// Address of the Primary Element of the Node
-static uint16 _my_address = 0;
-/// Number of active Bluetooth connections
-static uint8 num_connections = 0;
+static uint16_t my_address = 0;
 /// Handle of the last opened LE connection
-static uint8 conn_handle = 0xFF;
-/// Flag for indicating that initialization was performed
-static uint8 init_done = 0;
+static uint8_t conn_handle = 0xFF;
+/// Number of active Bluetooth connections
+static uint8_t num_connections = 0;
+/// Init flag
+static bool init_done = false;
 
-/***************************************************************************//**
- * This function is called to initiate factory reset. Factory reset may be
- * initiated by keeping one of the WSTK pushbuttons pressed during reboot.
- * Factory reset is also performed if it is requested by the provisioner
- * (event gecko_evt_mesh_node_reset_id).
+
+
+/*******************************************************************************
+ * Application Init.
  ******************************************************************************/
-static void initiate_factory_reset(void)
+SL_WEAK void app_init(void)
 {
-  LOGD("factory reset\r\n");
-  DI_Print("\n***\nFACTORY RESET\n***", DI_ROW_STATUS);
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application init code here!                         //
+  // This is called once during start-up.                                    //
+  /////////////////////////////////////////////////////////////////////////////
+  app_log("BT mesh Light initialized\r\n");
+  app_led_init();
+}
 
-  /* if connection is open then close it before rebooting */
-  if (conn_handle != 0xFF) {
-    gecko_cmd_le_connection_close(conn_handle);
-  }
-
-  /* perform a factory reset by erasing PS storage. This removes all the keys and other settings
-     that have been configured for this node */
-  gecko_cmd_flash_ps_erase_all();
-  // reboot after a small delay
-  gecko_cmd_hardware_set_soft_timer(2 * 32768, TIMER_ID_FACTORY_RESET, 1);
+/*******************************************************************************
+ * Application Process Action.
+ ******************************************************************************/
+SL_WEAK void app_process_action(void)
+{
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application code here!                              //
+  // This is called infinitely.                                              //
+  // Do not call blocking functions from here!                               //
+  /////////////////////////////////////////////////////////////////////////////
 }
 
 /***************************************************************************//**
  * Set device name in the GATT database. A unique name is generated using
- * the two last bytes from the Bluetooth address of this device. Name is also
- * displayed on the LCD.
+ * the two last bytes from the UUID of this device. Name is also
+ * displayed on the LCD if present.
  *
- * @param[in] pAddr  Pointer to Bluetooth address.
+ * @param[in] uuid  Pointer to device UUID.
  ******************************************************************************/
-static void set_device_name(bd_addr *pAddr)
+static void set_device_name(uuid_128 *uuid)
 {
-  char name[20];
-  uint16 res;
+  char name[NAME_BUF_LEN];
+  sl_status_t result;
 
-  // create unique device name using the last two bytes of the Bluetooth address
-  sprintf(name, "light node %02x:%02x", pAddr->addr[1], pAddr->addr[0]);
+  // Create unique device name using the last two bytes of the device UUID
+  snprintf(name, NAME_BUF_LEN, "proxy node %02x%02x",
+           uuid->data[14], uuid->data[15]);
 
-  LOGD("Device name: '%s'\r\n", name);
+  app_log("Device name: '%s'\r\n", name);
 
-  // write device name to the GATT database
-  res = gecko_cmd_gatt_server_write_attribute_value(gattdb_device_name, 0, strlen(name), (uint8 *)name)->result;
-  if (res) {
-    LOGD("gecko_cmd_gatt_server_write_attribute_value() failed, code %x\r\n", res);
+  result = sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
+                                                   0,
+                                                   strlen(name),
+                                                   (uint8_t *)name);
+  if (result) {
+    app_log("sl_bt_gatt_server_write_attribute_value failed, code %x\r\n",
+            result);
   }
-
-  // show device name on the LCD
-  DI_Print(name, DI_ROW_NAME);
+  // Show device name on the LCD
+  lcd_print(name, SL_BTMESH_WSTK_LCD_ROW_NAME_CFG_VAL);
 }
 
 /***************************************************************************//**
- * This function prints debug information for mesh server state change event.
+ * Handles button press and does a factory reset
  *
- * @param[in] pEvt  Pointer to mesh_lib_generic_server_state_changed event.
+ * @return true if there is no button press
  ******************************************************************************/
-#if 0
-static void server_state_changed(struct gecko_msg_mesh_generic_server_state_changed_evt_t *pEvt)
+bool handle_reset_conditions(void)
 {
-  int i;
-
-  LOGD("state changed: ");
-  LOGD("model ID %4.4x, type %2.2x ", pEvt->model_id, pEvt->type);
-  for (i = 0; i < pEvt->parameters.len; i++) {
-    LOGD("%2.2x ", pEvt->parameters.data[i]);
+  // If PB0 is held down then do full factory reset
+  if (sl_simple_button_get_state(&sl_button_btn0)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Full factory reset
+    sl_btmesh_initiate_full_reset();
+    return false;
   }
-  LOGD("\r\n");
-}
-#endif
 
-/*******************************************************************************
- * Initialise used bgapi classes.
+#ifndef SINGLE_BUTTON
+  // If PB1 is held down then do node factory reset
+  if (sl_simple_button_get_state(&sl_button_btn1)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Node factory reset
+    sl_btmesh_initiate_node_reset();
+    return false;
+  }
+#endif // SL_CATALOG_BTN1_PRESENT
+  return true;
+}
+
+/***************************************************************************//**
+ * Handling of boot event.
+ * If needed it performs factory reset. In other case it sets device name
+ * and initialize mesh node.
  ******************************************************************************/
-void gecko_bgapi_classes_init(void)
+static void handle_boot_event(void)
 {
-  gecko_bgapi_class_dfu_init();
-  gecko_bgapi_class_system_init();
-  gecko_bgapi_class_le_gap_init();
-  gecko_bgapi_class_le_connection_init();
-  gecko_bgapi_class_gatt_init();
-  gecko_bgapi_class_gatt_server_init();
-  gecko_bgapi_class_hardware_init();
-  gecko_bgapi_class_flash_init();
-  gecko_bgapi_class_test_init();
-  //gecko_bgapi_class_sm_init();
-  //mesh_native_bgapi_init();
-  gecko_bgapi_class_mesh_node_init();
-  //gecko_bgapi_class_mesh_prov_init();
-  gecko_bgapi_class_mesh_proxy_init();
-  gecko_bgapi_class_mesh_proxy_server_init();
-  gecko_bgapi_class_mesh_proxy_client_init();
-  //gecko_bgapi_class_mesh_generic_client_init();
-  gecko_bgapi_class_mesh_generic_server_init();
-  //gecko_bgapi_class_mesh_vendor_model_init();
-  //gecko_bgapi_class_mesh_health_client_init();
-  //gecko_bgapi_class_mesh_health_server_init();
-  gecko_bgapi_class_mesh_test_init();
-  //gecko_bgapi_class_mesh_lpn_init();
-  /* gecko_bgapi_class_mesh_friend_init(); */
+  sl_status_t sc;
+  char buf[BOOT_ERR_MSG_BUF_LEN];
+  uuid_128 uuid;
+  // Check reset conditions and continue if not reset.
+  if (handle_reset_conditions()) {
+    // Initialize Mesh stack in Node operation mode, wait for initialized event
+    sc = sl_btmesh_node_init();
+    if (sc) {
+      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
+      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
+      app_log("Initialization failed (0x%x)\r\n", sc);
+    } else {
+      sc = sl_btmesh_node_get_uuid(&uuid);
+      app_assert_status_f(sc, "Failed to get UUID\r\n");
+      set_device_name(&uuid);
+    }
+  }
 }
 
-static void mesh_proxy_client_setting(void)
+/***************************************************************************//**
+ *  Handling of le connection events.
+ *  It handles:
+ *   - le_connection_opened
+ *   - le_connection_parameters
+ *   - le_connection_closed
+ *
+ *  @param[in] evt  Pointer to incoming connection event.
+ ******************************************************************************/
+static void handle_le_connection_events(sl_bt_msg_t *evt)
 {
-  struct gecko_msg_mesh_test_get_local_config_rsp_t *rsp = NULL;
+  switch (SL_BT_MSG_ID(evt->header)) {
+    case sl_bt_evt_connection_opened_id:
+      num_connections++;
+      lcd_print("connected", SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
+      app_log_debug("Connected\r\n");
+      break;
 
-  /* Configure the PB-ADV bearer state */
-  SE_CALL(gecko_cmd_mesh_test_set_adv_bearer_state(ADV_BEARER_STATE));
-  LOGD("ADV Bearer State - %s\n",
-       ADV_BEARER_STATE ? "ON" : "OFF");
+    case sl_bt_evt_connection_closed_id:
+      if (num_connections > 0) {
+        if (--num_connections == 0) {
+          lcd_print("", SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
+          app_log_debug("Disconnected\r\n");
+        }
+      }
+      break;
 
-  /* Make sure gatt proxy feature is ON */
-  rsp = gecko_cmd_mesh_test_get_local_config(mesh_node_gatt_proxy, 0);
-  ASSERT(rsp->result == bg_err_success);
-
-  if (!rsp->data.data[0]) {
-    uint8_t en = 1;
-    SE_CALL(gecko_cmd_mesh_test_set_local_config(
-              mesh_node_gatt_proxy,
-              0,
-              1,
-              &en));
-    LOGD("Proxy Enabled.\n");
+    default:
+      break;
   }
 }
 
-static void start_scan(void)
+static void on_adv_scanned(sl_bt_evt_scanner_scan_report_t *e)
 {
-  /* Set filter to pass the connectable adv packets to application layer */
-  SE_CALL(gecko_cmd_mesh_node_set_adv_event_filter(0x01, 0, NULL));
-
-  SE_CALL(gecko_cmd_le_gap_end_procedure());
-  /* Set the default timing for all connctions to be established later on */
-  SE_CALL(gecko_cmd_le_gap_set_conn_timing_parameters(
-            MIN_CONN_INTERVAL,
-            MAX_CONN_INTERVAL,
-            CONN_LATENCY,
-            CONN_SPV_TIMEOUT,
-            MIN_CE_LENGTH,
-            MAX_CE_LENGTH));
-
-  /* Set up discovery, including timing, type, then start discovery */
-  SE_CALL(gecko_cmd_le_gap_set_discovery_timing(
-            le_gap_phy_1m,
-            SCAN_INTERVAL,
-            SCAN_WINDOW));
-  SE_CALL(gecko_cmd_le_gap_set_discovery_type(
-            le_gap_phy_1m,
-            SCAN_TYPE));
-  SE_CALL(gecko_cmd_le_gap_start_discovery(
-            le_gap_phy_1m,
-            le_gap_discover_generic));
-  LOGD("Scan Enabled.\n");
-}
-
-/**
- * @brief match - Since there isn't any API for parsing the proxy adv payload,
- * this function fake the match by any means.
- *
- * @param data
- * @param network_id
- * @param unicast_addr
- *
- * @return
- */
-static uint8_t match(const struct gecko_msg_le_gap_scan_response_evt_t *e,
-                     const uint8_t *network_id,
-                     uint16_t unicast_addr)
-{
-  size_t pos = 0, tmp = 0;
-  uint8_t adv_len, adv_type;
-  const uint8_t *uuid = (const uint8_t *)PROXY_SERVICE_UUID;
-
-  while (pos < e->data.len) {
-    adv_len = e->data.data[pos];
-    adv_type = e->data.data[pos + 1];
-    tmp = pos + 2;
-    pos += 1 + adv_len;
-    if (adv_type != ADV_TYPE_16BIT_SERVICE) {
-      continue;
-    }
-    if (adv_len == 12
-        && !memcmp(&e->data.data[tmp], uuid, 2)
-        && e->data.data[tmp + 2] == 0x00) {
-      /* Network ID */
-      return !memcmp(&e->data.data[tmp + 3], network_id, 8);
-    }
-
-    if (adv_len == 20
-        && !memcmp(&e->data.data[tmp], uuid, 2)
-        && e->data.data[tmp + 2] == 0x01) {
-      /* Node identity - No api for parsing the payload, return 0 for now*/
-      return 0;
-    }
-  }
-  return 0;
-}
-
-static void on_adv_scanned(const struct gecko_msg_le_gap_scan_response_evt_t *e)
-{
-  ASSERT(e);
-
   /* Filter out unconnectable packets */
   if ((e->address_type & 0x7) != 0 && (e->address_type & 0x7) != 1) {
     return;
   }
-#if (USE_FAKE_NETWORK_ID == 1)
-  if (match(e, dummy_network_id, 0)) {
-    SE_CALL(gecko_cmd_le_gap_end_procedure());
-    SE_CALL(gecko_cmd_le_gap_connect(
-              e->address,
-              e->address_type,
-              le_gap_phy_1m));
-    LOGI("Matched, connecting...\n");
+
+  if (!memcmp(e->address.addr, target_server_node_bd_addr.addr, 6)) {
+    UINT8_ARRAY_DUMP(e->address.addr, 6);
+    sl_bt_connection_open(
+      e->address,
+      e->address_type,
+      sl_bt_gap_phy_1m,
+      &conn_handle);
+    app_log_info("Matched, connecting...\r\n");
   }
-#else
-  if (!memcmp(e->address, target_server_node_bd_addr, 6)) {
-    /* SE_CALL(gecko_cmd_le_gap_end_procedure()); */
-    SE_CALL(gecko_cmd_le_gap_connect(
-              e->address,
-              e->address_type,
-              le_gap_phy_1m));
-    LOGI("Matched, connecting...\n");
-  }
-#endif
-  LOGD("Network ID: \n\t");
+
+  app_log_debug("Network ID: \n\t");
   UINT8_ARRAY_DUMP(e->data.data, e->data.len);
 }
 
 static void initiate_proxy_connection(uint32_t delay_ticks)
 {
-  struct gecko_msg_mesh_proxy_connect_rsp_t *rsp = NULL;
+  sl_status_t sc;
   if (conn_handle == 0xFF) {
     return;
   }
 
   if (delay_ticks == 0) {
-    rsp = gecko_cmd_mesh_proxy_connect(conn_handle);
-    DI_Print("Proxy connecting", DI_ROW_FRIEND);
-    if (rsp->result) {
-      ERROR_ADDRESSING();
+    sc = sl_btmesh_proxy_connect(conn_handle, &proxy_handle);
+    app_log_info("Proxy handle = %ld\r\n", proxy_handle);
+    lcd_print("Proxy connecting", SL_BTMESH_WSTK_LCD_ROW_FRIEND_CFG_VAL);
+    if (sc != SL_STATUS_OK) {
+      app_log_info("sc = %ld\r\n", sc);
     } else {
-      /* Duplicated with event ??? */
-      proxy_handle = rsp->handle;
-      LOGI("Proxy handle = %ld\n", proxy_handle);
+      app_log_info("Proxy handle = %ld\r\n", proxy_handle);
     }
   } else {
-    SE_CALL(gecko_cmd_hardware_set_soft_timer(
-              delay_ticks,
-              TIMER_ID_DELAY_PROXY_CONN,
-              1));
+    sl_sleeptimer_start_timer(
+      &sleep_timer_handle_delay_proxy_conn_1,
+      delay_ticks,
+      sleeptimer_callback,
+      (void*)TIMER_ID_DELAY_PROXY_CONN,
+      0,
+      0);
   }
 }
 
 static void demo_set_whitelist(uint8_t count)
 {
-  LOGD("set up whitelist\n");
+  app_log_debug("Set up whitelist\r\n");
   switch (count) {
     case 0:
-      SE_CALL(gecko_cmd_mesh_proxy_allow(
+      sl_btmesh_proxy_allow(
                 proxy_handle,
-                0xC021,
-                0));
+                0,
+                0xC021);
       break;
     case 1:
-      SE_CALL(gecko_cmd_mesh_proxy_allow(
+      sl_btmesh_proxy_allow(
                 proxy_handle,
-                0xC02F,
-                0));
+                0,
+                0xC02F);
       break;
     default:
       break;
@@ -419,7 +376,23 @@ static void demo_set_whitelist(uint8_t count)
 
 static void demo_set_blacklist(uint8_t count)
 {
-  LOGD("set up blacklist\n");
+  app_log_debug("Set up blacklist\r\n");
+  switch (count) {
+    case 0:
+      sl_btmesh_proxy_deny(
+                proxy_handle,
+                0,
+                0xC021);
+      break;
+    case 1:
+      sl_btmesh_proxy_deny(
+                proxy_handle,
+                0,
+                0xC02F);
+      break;
+    default:
+      break;
+  }
 }
 
 static void proxy_configuration(uint8_t type,
@@ -431,311 +404,392 @@ static void proxy_configuration(uint8_t type,
 static void proxy_set_filter_type(uint8_t filter_type)
 {
   /* Below example to use whitelist */
-  SE_CALL(gecko_cmd_mesh_proxy_set_filter_type(
+  sl_btmesh_proxy_set_filter_type(
             proxy_handle,
-            !!filter_type,
-            0));
-  LOGD("Proxy filter configured.\n");
+            0,
+            filter_type);
+  app_log_debug("Proxy filter configured.\r\n");
 }
 
-/*******************************************************************************
+static void mesh_proxy_client_setting(void)
+{
+  sl_status_t sc;
+
+  /* Configure the PB-ADV bearer state */
+  sl_btmesh_test_set_adv_bearer_state(ADV_BEARER_STATE);
+  app_log("ADV Bearer State - %s\r\n",
+       ADV_BEARER_STATE ? "ON" : "OFF");
+
+  /* Make sure gatt proxy feature is ON */
+  uint8_t en = 1;
+  sc = sl_btmesh_test_get_gatt_proxy(&en);
+  app_assert_status_f(sc, "Failed to get GATT proxy state\r\n");
+  app_log_info("en = %d\r\n", en);
+
+  if (!en) {
+    uint8_t value = 1;
+    sc = sl_btmesh_test_set_gatt_proxy(value, &en);
+    app_assert_status_f(sc, "Failed to set GATT proxy state\r\n");
+    app_log("Proxy Enabled.\r\n");
+  }
+}
+
+static void start_scan(void)
+{
+  sl_bt_scanner_stop();
+
+  /* Set up discovery, including timing, type, then start discovery */
+  sl_bt_scanner_set_parameters(
+            SCAN_TYPE,
+            SCAN_INTERVAL,
+            SCAN_WINDOW);
+
+  sl_bt_scanner_start(
+            sl_bt_gap_phy_1m,
+            sl_bt_scanner_discover_generic);
+  app_log_debug("Scan Enabled.\r\n");
+}
+
+/***************************************************************************//**
  * Handling of stack events. Both Bluetooth LE and Bluetooth mesh events
  * are handled here.
  * @param[in] evt_id  Incoming event ID.
  * @param[in] evt     Pointer to incoming event.
  ******************************************************************************/
-void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *evt)
+void sl_bt_on_event(sl_bt_msg_t *evt)
 {
-  uint16_t result;
-  char buf[30];
-
-  if (NULL == evt) {
-    return;
-  }
-
-  switch (evt_id) {
-    case gecko_evt_system_boot_id:
-      // check pushbutton state at startup. If either PB0 or PB1 is held down then do factory reset
-      if (GPIO_PinInGet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN) == 0 || GPIO_PinInGet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN) == 0) {
-        initiate_factory_reset();
-      } else {
-        INIT_LOG();
-        struct gecko_msg_system_get_bt_address_rsp_t *pAddr = gecko_cmd_system_get_bt_address();
-
-        set_device_name(&pAddr->address);
-
-        // Initialize Mesh stack in Node operation mode, it will generate initialized event
-
-        result = gecko_cmd_mesh_node_init()->result;
-        if (result) {
-          sprintf(buf, "init failed (0x%x)", result);
-          DI_Print(buf, DI_ROW_STATUS);
-        }
-
-        // re-initialize LEDs (needed for those radio board that share same GPIO for button/LED)
-        LEDS_init();
-      }
-      break;
-
-    case gecko_evt_hardware_soft_timer_id:
-      switch (evt->data.evt_hardware_soft_timer.handle) {
-        case TIMER_ID_FACTORY_RESET:
-          // reset the device to finish factory reset
-          gecko_cmd_system_reset(0);
-          break;
-
-        case TIMER_ID_RESTART:
-          // restart timer expires, reset the device
-          gecko_cmd_system_reset(0);
-          break;
-
-        case TIMER_ID_PROVISIONING:
-          // toggle LED to indicate the provisioning state
-          if (!init_done) {
-            LEDS_SetState(LED_STATE_PROV);
-          }
-          break;
-
-        case TIMER_ID_DELAY_TURN_OFF_ADV_BEARER:
-          mesh_proxy_client_setting();
-          start_scan();
-          break;
-
-        case TIMER_ID_DELAY_PROXY_CONN:
-          initiate_proxy_connection(0);
-          break;
-
-        default:
-          // lightbulb related timer events are handled by separate function
-          handle_lightbulb_timer_evt(evt);
-          break;
-      }
-      break;
-
-    case gecko_evt_mesh_node_initialized_id:
-      LOGD("node initialized\r\n");
-
-      // Initialize generic server models
-      gecko_cmd_mesh_generic_server_init();
-
-      struct gecko_msg_mesh_node_initialized_evt_t *pData = (struct gecko_msg_mesh_node_initialized_evt_t *)&(evt->data);
-
-      if (pData->provisioned) {
-        LOGD("node is provisioned. address:%x, ivi:%ld\r\n", pData->address, pData->ivi);
-
-        _my_address = pData->address;
-        lightbulb_state_init();
-        init_done = 1;
-
-        gecko_cmd_hardware_set_soft_timer(
-          DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
-          TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
-          1);
-
-        DI_Print("provisioned", DI_ROW_STATUS);
-      } else {
-        LOGD("node is unprovisioned\r\n");
-        DI_Print("unprovisioned", DI_ROW_STATUS);
-
-        LOGD("starting unprovisioned beaconing...\r\n");
-        gecko_cmd_mesh_node_start_unprov_beaconing(0x3);   // enable ADV and GATT provisioning bearer
-      }
-      break;
-
-    case gecko_evt_mesh_node_provisioning_started_id:
-      LOGD("Started provisioning\r\n");
-      DI_Print("provisioning...", DI_ROW_STATUS);
-      // start timer for blinking LEDs to indicate which node is being provisioned
-      gecko_cmd_hardware_set_soft_timer(32768 / 4, TIMER_ID_PROVISIONING, 0);
-      break;
-
-    case gecko_evt_mesh_node_provisioned_id:
-      lightbulb_state_init();
-      init_done = 1;
-      LOGD("node provisioned, got address=%x\r\n", evt->data.evt_mesh_node_provisioned.address);
-      // stop LED blinking when provisioning complete
-      gecko_cmd_hardware_set_soft_timer(0, TIMER_ID_PROVISIONING, 0);
-      DI_Print("provisioned", DI_ROW_STATUS);
-
-      gecko_cmd_hardware_set_soft_timer(
-        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
-        TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
-        1);
-      break;
-
-    case gecko_evt_mesh_node_provisioning_failed_id:
-      LOGD("provisioning failed, code %x\r\n", evt->data.evt_mesh_node_provisioning_failed.result);
-      DI_Print("prov failed", DI_ROW_STATUS);
-      /* start a one-shot timer that will trigger soft reset after small delay */
-      gecko_cmd_hardware_set_soft_timer(2 * 32768, TIMER_ID_RESTART, 1);
-      break;
-
-    case gecko_evt_mesh_node_key_added_id:
-      LOGD("got new %s key with index %x\r\n", evt->data.evt_mesh_node_key_added.type == 0 ? "network" : "application",
-           evt->data.evt_mesh_node_key_added.index);
-      break;
-
-    case gecko_evt_mesh_node_model_config_changed_id:
-      LOGD("model config changed\r\n");
-      gecko_cmd_hardware_set_soft_timer(
-        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
-        TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
-        1);
-      break;
-
-    case gecko_evt_mesh_generic_server_client_request_id:
-    {
-      LOGD("evt gecko_evt_mesh_generic_server_client_request_id\r\n");
-      // pass the server client request event to mesh lib handler that will invoke
-      // the callback functions registered by application
-      mesh_lib_generic_server_event_handler(evt);
-
-      static uint32_t num = 1;
-      char buf[30];
-      memset(buf, 0, 30);
-      sprintf(buf, "Req %lu", num++);
-      DI_Print(buf, DI_ROW_FRIEND);
-    }
-    break;
-
-    case gecko_evt_mesh_generic_server_state_changed_id:
-
-      // uncomment following line to get debug prints for each server state changed event
-      //server_state_changed(&(evt->data.evt_mesh_generic_server_state_changed));
-
-      // pass the server state changed event to mesh lib handler that will invoke
-      // the callback functions registered by application
-      mesh_lib_generic_server_event_handler(evt);
-      break;
-
-    case gecko_evt_mesh_node_reset_id:
-      LOGD("evt gecko_evt_mesh_node_reset_id\r\n");
-      initiate_factory_reset();
-      break;
-
-    case gecko_evt_le_gap_adv_timeout_id:
-      // adv timeout events silently discarded
-      break;
-
-    case gecko_evt_le_connection_opened_id:
-      LOGD("evt:gecko_evt_le_connection_opened_id\r\n");
+  switch (SL_BT_MSG_ID(evt->header)) {
+    case sl_bt_evt_connection_opened_id:
+      app_log("evt:sl_bt_evt_connection_opened_id\r\n");
       num_connections++;
-      conn_handle = evt->data.evt_le_connection_opened.connection;
-      DI_Print("connected", DI_ROW_CONNECTION);
+      app_log_info("conn_handle = %ld\r\n", conn_handle);
+      conn_handle = evt->data.evt_connection_opened.connection;
+      lcd_print("connected", SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
       initiate_proxy_connection(DELAY_PROXY_CONN_IN_TICKS);
       break;
 
-    case gecko_evt_le_connection_parameters_id:
-      LOGD("evt:gecko_evt_le_connection_parameters_id\r\n");
+    case sl_bt_evt_connection_parameters_id:
+      app_log("evt:sl_bt_evt_connection_parameters_id\r\n");
       break;
 
-    case gecko_evt_le_connection_closed_id:
-    {
-      /* Check if need to boot to dfu mode */
-      if (boot_to_dfu) {
-        /* Enter to DFU OTA mode */
-        gecko_cmd_system_reset(2);
-      }
-
-      LOGW("evt:conn closed, reason 0x%x\r\n", evt->data.evt_le_connection_closed.reason);
-
-      conn_handle = 0xFF;
-      SE_CALL(gecko_cmd_hardware_set_soft_timer(
-                0,
-                TIMER_ID_DELAY_PROXY_CONN,
-                1));
-      if (num_connections > 0) {
-        if (--num_connections == 0) {
-          memset(buf, 0, 30);
-          sprintf(buf, "Reason = %x", evt->data.evt_le_connection_closed.reason);
-          DI_Print(buf, DI_ROW_CONNECTION);
-          start_scan();
-        }
-      }
-    }
-    break;
-    case gecko_evt_gatt_server_user_write_request_id:
+    case sl_bt_evt_gatt_server_user_write_request_id:
       if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_ota_control) {
         /* Set flag to enter to OTA mode */
         boot_to_dfu = 1;
         /* Send response to Write Request */
-        gecko_cmd_gatt_server_send_user_write_response(
+        sl_bt_gatt_server_send_user_write_response(
           evt->data.evt_gatt_server_user_write_request.connection,
           gattdb_ota_control,
-          bg_err_success);
+          0);
 
         /* Close connection to enter to DFU OTA mode */
-        gecko_cmd_le_connection_close(evt->data.evt_gatt_server_user_write_request.connection);
+        sl_bt_connection_close(evt->data.evt_gatt_server_user_write_request.connection);
       }
       break;
 
-    case gecko_evt_system_external_signal_id:
+    case sl_bt_evt_connection_closed_id:
+     {
+       handle_le_connection_events(evt);
+       /* Check if need to boot to dfu mode */
+       if (boot_to_dfu) {
+         /* Enter to DFU OTA mode */
+         sl_bt_system_reset(2);
+       }
+
+       app_log_warning("evt:sl_bt_evt_connection_closed_id, reason 0x%x\r\n",
+                       evt->data.evt_connection_closed.reason);
+
+       conn_handle = 0xFF;
+       sl_sleeptimer_start_timer(
+         &sleep_timer_handle_delay_proxy_conn_2,
+         0,
+         sleeptimer_callback,
+         (void*)TIMER_ID_DELAY_PROXY_CONN,
+         0,
+         0);
+
+       if (num_connections > 0) {
+         if (--num_connections == 0) {
+           char buf[30];
+           memset(buf, 0, 30);
+           sprintf(buf, "Reason = %x", evt->data.evt_connection_closed.reason);
+           lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
+           start_scan();
+         }
+       }
+     }
+     break;
+
+    case sl_bt_evt_system_boot_id:
+       handle_boot_event();
+       break;
+
+     case sl_bt_evt_system_external_signal_id:
+     {
+       switch (evt->data.evt_system_soft_timer.handle) {
+
+         case TIMER_ID_RESTART:
+           app_log("TIMER_ID_RESTART\r\n");
+           // Restart timer expires, reset the device
+           sl_bt_system_reset(0);
+           break;
+
+         case TIMER_ID_DELAY_TURN_OFF_ADV_BEARER:
+           app_log("TIMER_ID_DELAY_TURN_OFF_ADV_BEARER\r\n");
+           mesh_proxy_client_setting();
+           start_scan();
+           break;
+
+         case TIMER_ID_DELAY_PROXY_CONN:
+           app_log("TIMER_ID_DELAY_PROXY_CONN\r\n");
+           initiate_proxy_connection(0);
+           break;
+
+         default:
+           break;
+       }
+     }
+     break;
+
+     case sl_bt_evt_scanner_scan_report_id: /* Can be removed after node_init issues with legacy and extended scanner solved */
+     case sl_bt_evt_scanner_legacy_advertisement_report_id:
+     case sl_bt_evt_scanner_extended_advertisement_report_id:
+       if (num_connections == 0) {
+         on_adv_scanned(&evt->data.evt_scanner_scan_report);
+       }
+       break;
+
+     default:
+       app_log("Unhandled evt:%x\r\n", SL_BT_MSG_ID(evt->header));
+       break;
+  }
+}
+
+/***************************************************************************//**
+ * Bluetooth Mesh stack event handler.
+ * This overrides the dummy weak implementation.
+ *
+ * @param[in] evt Pointer to incoming event from the Bluetooth Mesh stack.
+ ******************************************************************************/
+void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
+{
+  sl_status_t sc;
+
+  switch (SL_BT_MSG_ID(evt->header)) {
+    case sl_btmesh_evt_node_initialized_id:
+
+      if (!(evt->data.evt_node_initialized.provisioned)) {
+        // Enable ADV and GATT provisioning bearer
+        sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
+
+        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\r\n");
+      }
+
+      app_log_debug("Node initialized\r\n");
+
+      // Initialize generic server models
+      sl_btmesh_generic_server_init();
+
+      if (evt->data.evt_node_initialized.provisioned) {
+        app_log("Node is provisioned, address:%x, ivi:%ld\r\n",
+                evt->data.evt_node_initialized.address,
+                evt->data.evt_node_initialized.iv_index);
+
+        my_address = evt->data.evt_node_initialized.address;
+        init_done = true;
+
+        sl_sleeptimer_start_timer(
+          &sleep_timer_handle_delay_turn_off_adv_bearer_1,
+          DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
+          sleeptimer_callback,
+          (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
+          0,
+          0);
+      } else {
+        app_log_debug("Starting unprovisioned beaconing...\r\n");
+        sl_btmesh_node_start_unprov_beaconing(0x3);   // enable ADV and GATT provisioning bearer
+      }
+      break;
+
+    case sl_btmesh_evt_node_provisioning_started_id:
+      app_log_debug("evt:sl_btmesh_evt_node_provisioning_started_id\r\n");
+      break;
+
+    case sl_btmesh_evt_node_provisioned_id:
+      init_done = true;
+
+      sl_sleeptimer_start_timer(
+        &sleep_timer_handle_delay_turn_off_adv_bearer_2,
+        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
+        sleeptimer_callback,
+        (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
+        0,
+        0);
+      break;
+
+    case sl_btmesh_evt_node_provisioning_failed_id:
+      /* Start a one-shot timer that will trigger soft reset after small delay */
+      sl_sleeptimer_start_timer(
+        &sleep_timer_restart_1,
+        2 * 32768,
+        sleeptimer_callback,
+        (void*)TIMER_ID_RESTART,
+        0,
+        0);
+      break;
+
+    case sl_btmesh_evt_node_key_added_id:
+      app_log("Got new %s key with index %x\r\n",
+              evt->data.evt_node_key_added.type == 0 ? "network" : "application",
+              evt->data.evt_node_key_added.index);
+      break;
+
+    case sl_btmesh_evt_node_model_config_changed_id:
+      app_log_debug("Model config changed\r\n");
+
+      sl_sleeptimer_start_timer(
+        &sleep_timer_handle_delay_turn_off_adv_bearer_3,
+        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
+        sleeptimer_callback,
+        (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
+        0,
+        0);
+      break;
+
+    case sl_btmesh_evt_generic_server_client_request_id:
     {
-      uint16_t current_level;
-      int16_t current_delta;
-      char tmp[21];
+      app_log_debug("evt:sl_btmesh_evt_generic_server_client_request_id\r\n");
 
-      if (init_done && (evt->data.evt_system_external_signal.extsignals & EXT_SIGNAL_LED_LEVEL_CHANGED)) {
-        /* this signal from the LED PWM driver indicates that the level has changed,
-         * we use it here to update the LCD status */
-        current_level = LEDS_GetLevel();
-        sprintf(tmp, "Lightness: %5u%%", (current_level * 100 + 99) / 65535);
-        DI_Print(tmp, DI_ROW_LIGHTNESS);
-      }
-
-      if (init_done && (evt->data.evt_system_external_signal.extsignals & EXT_SIGNAL_LED_TEMPERATURE_CHANGED)) {
-        /* this signal from the LED driver indicates that the temperature level has changed,
-         * we use it here to update the LCD status */
-        current_level = LEDS_GetTemperature();
-        sprintf(tmp, "ColorTemp: %5uK", current_level);
-        DI_Print(tmp, DI_ROW_TEMPERATURE);
-
-        current_delta = LEDS_GetDeltaUV();
-        sprintf(tmp, "Delta UV: %6d ", current_delta);
-        DI_Print(tmp, DI_ROW_DELTAUV);
-      }
+      static uint32_t requests = 1;
+      char buf[30];
+      memset(buf, 0, 30);
+      sprintf(buf, "Req %lu", requests++);
+      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_FRIEND_CFG_VAL);
     }
     break;
 
-    case gecko_evt_le_gap_scan_response_id:
-    case gecko_evt_le_gap_extended_scan_response_id:
-      if (num_connections == 0) {
-        on_adv_scanned(&evt->data.evt_le_gap_scan_response);
-      }
+    case sl_btmesh_evt_generic_server_state_changed_id:
+      app_log_debug("evt:sl_btmesh_evt_generic_server_state_changed_id\r\n");
       break;
 
-    case gecko_evt_mesh_proxy_connected_id:
-      DI_Print("Proxy connected", DI_ROW_FRIEND);
-      LOGI("Proxy connection (handle = 0x%lx) established.\n",
-           evt->data.evt_mesh_proxy_connected.handle);
-      proxy_handle = evt->data.evt_mesh_proxy_connected.handle;
-      proxy_set_filter_type(PROXY_FILTER_BLACKLIST);
-
-      /* SE_CALL(gecko_cmd_le_gap_end_procedure()); */
+    case sl_btmesh_evt_node_reset_id:
+      app_log_debug("evt:sl_btmesh_evt_node_reset_id\r\n");
+      sl_btmesh_initiate_full_reset();
       break;
 
-    case gecko_evt_mesh_proxy_disconnected_id:
-      DI_Print("Proxy disconnected", DI_ROW_FRIEND);
-      LOGW("Proxy connection (handle = 0x%lx) closed. Reason = 0x%04x\n",
-           evt->data.evt_mesh_proxy_disconnected.handle,
-           evt->data.evt_mesh_proxy_disconnected.reason);
-      proxy_handle = 0xffff;
-      break;
+    case sl_btmesh_evt_proxy_connected_id:
+     lcd_print("Proxy connected", SL_BTMESH_WSTK_LCD_ROW_FRIEND_CFG_VAL);
+     app_log_info("Proxy connection (handle = 0x%lx) established.\r\n",
+                  evt->data.evt_proxy_connected.handle);
+     proxy_handle = evt->data.evt_proxy_connected.handle;
+     proxy_set_filter_type(PROXY_FILTER_BLACKLIST);
+     break;
 
-    case gecko_evt_mesh_proxy_filter_status_id:
-      LOGD("Filter length = %d\n",
-           evt->data.evt_mesh_proxy_filter_status.count);
-      proxy_configuration(evt->data.evt_mesh_proxy_filter_status.type,
-                          evt->data.evt_mesh_proxy_filter_status.count);
-      if (evt->data.evt_mesh_proxy_filter_status.count == 2) {
-        DI_Print("Proxy configured", DI_ROW_FRIEND);
-      }
-      break;
+   case sl_btmesh_evt_proxy_disconnected_id:
+     lcd_print("Proxy disconnected", SL_BTMESH_WSTK_LCD_ROW_FRIEND_CFG_VAL);
+     app_log_warning("Proxy connection (handle = 0x%lx) closed. Reason = 0x%04x\r\n",
+                     evt->data.evt_proxy_disconnected.handle,
+                     evt->data.evt_proxy_disconnected.reason);
+     proxy_handle = 0xffff;
+     break;
+
+   case sl_btmesh_evt_proxy_filter_status_id:
+     app_log("Filter length = %d\r\n",
+          evt->data.evt_proxy_filter_status.count);
+     proxy_configuration(evt->data.evt_proxy_filter_status.type,
+                         evt->data.evt_proxy_filter_status.count);
+     if (evt->data.evt_proxy_filter_status.count == 2) {
+       lcd_print("Proxy configured", SL_BTMESH_WSTK_LCD_ROW_FRIEND_CFG_VAL);
+     }
+     break;
+
     default:
-      //LOGD("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", evt_id, (evt_id >> 16) & 0xFF, (evt_id >> 24) & 0xFF);
       break;
   }
 }
 
-/** @} (end addtogroup app) */
-/** @} (end addtogroup Application) */
+/***************************************************************************//**
+ * Provisioning Decorator Callbacks
+ ******************************************************************************/
+// Called when the Provisioning starts
+void sl_btmesh_on_node_provisioning_started(uint16_t result)
+{
+  // Change buttons to LEDs in case of shared pin
+  app_led_change_buttons_to_leds();
+
+  sl_status_t sc = sl_simple_timer_start(
+    &app_led_blinking_timer,
+    APP_LED_BLINKING_TIMEOUT,
+    app_led_blinking_timer_cb,
+    NO_CALLBACK_DATA,
+    true);
+
+  app_assert_status_f(sc, "Failed to start periodic timer\r\n");
+
+  app_show_btmesh_node_provisioning_started(result);
+}
+
+// Called when the Provisioning finishes successfully
+void sl_btmesh_on_node_provisioned(uint16_t address,
+                                   uint32_t iv_index)
+{
+  sl_status_t sc = sl_simple_timer_stop(&app_led_blinking_timer);
+  app_assert_status_f(sc, "Failed to stop periodic timer\r\n");
+  // Turn off LED
+  init_done = true;
+  app_led_set_level(LED_LEVEL_OFF);
+
+  app_show_btmesh_node_provisioned(address, iv_index);
+}
+
+/***************************************************************************//**
+ * Timer Callbacks
+ ******************************************************************************/
+static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data)
+{
+  (void)data;
+  (void)handle;
+  if (!init_done) {
+    // Toggle LEDs
+    static uint16_t level = 0;
+    level = app_led_get_max() - level;
+    app_led_set_level(level);
+  }
+}
+
+void sl_btmesh_lighting_level_pwm_cb(uint16_t level)
+{
+  app_led_set_level(level);
+}
+
+void sl_btmesh_lighting_color_pwm_cb(uint16_t color)
+{
+  app_led_set_color(color);
+}
+
+/***************************************************************************//**
+ * Factory reset Callbacks
+ ******************************************************************************/
+void sl_btmesh_factory_reset_on_node_reset(void)
+{
+  app_show_btmesh_node_reset();
+  sl_bt_nvm_erase(SL_BTMESH_LIGHTING_SERVER_PS_KEY_CFG_VAL);
+  sl_bt_nvm_erase(SL_BTMESH_CTL_SERVER_PS_KEY_CFG_VAL);
+  sl_bt_nvm_erase(SL_BTMESH_LC_SERVER_PS_KEY_CFG_VAL);
+  sl_bt_nvm_erase(SL_BTMESH_LC_SERVER_PROPERTY_PS_KEY_CFG_VAL);
+}
+
+/***************************************************************************//**
+ * Sleeptimer callback
+ *
+ * Note: This function is called from interrupt context
+ *
+ * @param[in] handle Handle of the sleeptimer instance
+ * @param[in] data  Callback data
+ ******************************************************************************/
+void sleeptimer_callback(sl_sleeptimer_timer_handle_t *handle, void *data){
+  (void)handle;
+  (void)data;
+
+  sl_bt_external_signal((uint32_t)data);
+}
