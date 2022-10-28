@@ -49,6 +49,10 @@
 
 #include "my_model_def.h"
 
+#include "app_button_press.h"
+#include "sl_simple_button.h"
+#include "sl_simple_button_instances.h"
+
 #ifdef PROV_LOCALLY
 // Group Addresses
 // Choose any 16-bit address starting at 0xC000
@@ -62,13 +66,6 @@
 #define DEFAULT_TTL                                 5
 // #define ELEMENT_ID
 #endif // #ifdef PROV_LOCALLY
-
-// Buttons
-// Change depending on board. Check the board's User Guide for buttons pinouts
-#define BUTTON0_PORT                                gpioPortB
-#define BUTTON0_PIN                                 0
-#define BUTTON1_PORT                                gpioPortB
-#define BUTTON1_PIN                                 1
 
 #define EX_B0_PRESS                                 ((1) << 5)
 #define EX_B0_LONG_PRESS                            ((1) << 6)
@@ -95,16 +92,15 @@
 // GATT Provisioning Bearer
 #define PB_GATT                                     0x2
 
+// Used button indexes
+#define BUTTON_PRESS_BUTTON_0                       0
+#define BUTTON_PRESS_BUTTON_1                       1
 
 uint8_t conn_handle = 0xFF;
 
 static uint32_t periodic_timer_ms = 0;
 static uint8_t update_interval = 0;
 static unit_t unit = celsius;
-static uint8_t b0_state = 0;
-static uint8_t b1_state = 0;
-static uint32_t b1_counter = 0;
-static uint32_t b0_counter = 0;
 
 static uint8_t period_idx = 0;
 static uint8_t periods[] = {
@@ -146,7 +142,6 @@ static aes_key_128 enc_key = {
 };
 #endif
 
-static void gpio_init(void);
 static void factory_reset(void);
 static void delay_reset_ms(uint32_t ms);
 static void parse_period(uint8_t interval);
@@ -158,7 +153,7 @@ SL_WEAK void app_init(void)
 {
   app_log("=================\r\n");
   app_log("Client Device\r\n");
-  gpio_init();
+  app_button_press_enable();
 }
 
 /**************************************************************************//**
@@ -185,7 +180,7 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_bt_evt_system_boot_id:
       // Factory reset the device if Button 0 or 1 is being pressed during reset
-      if(((GPIO_PinInGet(BUTTON0_PORT, BUTTON0_PIN) == 0) || (GPIO_PinInGet(BUTTON1_PORT, BUTTON1_PIN) == 0))) {
+      if((sl_simple_button_get_state(&sl_button_btn0) == SL_SIMPLE_BUTTON_PRESSED) || (sl_simple_button_get_state(&sl_button_btn1) == SL_SIMPLE_BUTTON_PRESSED)) {
           factory_reset();
           break;
       }
@@ -471,75 +466,33 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
   }
 }
 
-
-/// GPIO Buttons
-static void gpio_init(void)
+void app_button_press_cb(uint8_t button, uint8_t duration)
 {
-  // Enable GPIO clock.
-  CMU_ClockEnable(cmuClock_GPIO, true);
-
-  // Configure PB0 as input and enable interrupt.
-  GPIO_PinModeSet(BUTTON0_PORT, BUTTON0_PIN, gpioModeInputPullFilter, 1);
-  GPIO_IntConfig(BUTTON0_PORT, BUTTON0_PIN, true, true, true);
-
-  // Configure PB1 as input and enable interrupt.
-  GPIO_PinModeSet(BUTTON1_PORT, BUTTON1_PIN, gpioModeInputPullFilter, 1);
-  GPIO_IntConfig(BUTTON1_PORT, BUTTON1_PIN, true, true, true);
-
-  NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
-  NVIC_EnableIRQ(GPIO_EVEN_IRQn);
-
-  NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
-  NVIC_EnableIRQ(GPIO_ODD_IRQn);
-}
-
-static void GPIO_Common_IRQHandler(void)
-{
-  uint32_t int_flag = GPIO_IntGet();
-  GPIO_IntClear(int_flag);
-  if(int_flag & (1 << BUTTON0_PIN)) {
-      b0_state = !GPIO_PinInGet(BUTTON0_PORT, BUTTON0_PIN);
-      if(b0_state == 1) {
-          // press, start counting
-          // RTCC should not be modified or touched because the sleeptimer uses
-          // the RTCC. Any usage of RTCC besides retrieving will produce
-          // unknown issues.
-          b0_counter = RTCC_CounterGet();
+  // Selecting action by duration
+  switch (duration) {
+    case APP_BUTTON_PRESS_DURATION_SHORT:
+      // Handling of button press less than 0.25s
+    case APP_BUTTON_PRESS_DURATION_MEDIUM:
+      // Handling of button press greater than 0.25s and less than 1s
+      if (button == BUTTON_PRESS_BUTTON_0) {
+        sl_bt_external_signal(EX_B0_PRESS);
       } else {
-          b0_counter = RTCC_CounterGet() - b0_counter;
-          if(b0_counter > 32768) {
-              sl_bt_external_signal(EX_B0_LONG_PRESS);
-          } else {
-              sl_bt_external_signal(EX_B0_PRESS);
-          }
+        sl_bt_external_signal(EX_B1_PRESS);
       }
-  }
-  if(int_flag & (1 << BUTTON1_PIN)) {
-      b1_state = !GPIO_PinInGet(BUTTON1_PORT, BUTTON1_PIN);
-      if(b1_state == 1) {
-          // press, start counting
-          b1_counter = RTCC_CounterGet();
+      break;
+    case APP_BUTTON_PRESS_DURATION_LONG:
+      // Handling of button press greater than 1s and less than 5s
+    case APP_BUTTON_PRESS_DURATION_VERYLONG:
+      if (button == BUTTON_PRESS_BUTTON_0) {
+        sl_bt_external_signal(EX_B0_LONG_PRESS);
       } else {
-          b1_counter = RTCC_CounterGet() - b1_counter;
-          if(b1_counter > 32768) {
-              sl_bt_external_signal(EX_B1_LONG_PRESS);
-          } else {
-              sl_bt_external_signal(EX_B1_PRESS);
-          }
+        sl_bt_external_signal(EX_B1_LONG_PRESS);
       }
+      break;
+    default:
+      break;
   }
 }
-
-// ISR
-void GPIO_EVEN_IRQHandler(void)
-{
-  GPIO_Common_IRQHandler();
-}
-void GPIO_ODD_IRQHandler(void)
-{
-  GPIO_Common_IRQHandler();
-}
-
 
 /// Reset
 static void factory_reset(void)
@@ -567,7 +520,6 @@ static void delay_reset_ms(uint32_t ms)
                          app_reset_timer_cb,
                          NULL,
                          false);
-
 }
 
 
@@ -601,4 +553,3 @@ static void parse_period(uint8_t interval)
       app_log("Periodic update off.\r\n");
   }
 }
-

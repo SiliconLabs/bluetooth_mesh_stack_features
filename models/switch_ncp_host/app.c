@@ -1,25 +1,69 @@
-/*************************************************************************
-    > File Name: app.c
-    > Author: Kevin
-    > Created Time: 2019-01-09
-    >Description:
- ************************************************************************/
+/***************************************************************************//**
+ * @file
+ * @brief BTmesh NCP-host Switch Example Project.
+ *******************************************************************************
+ * # License
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
+ *******************************************************************************
+ *
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
+ *
+ ******************************************************************************/
 
-/* Includes *********************************************************** */
+/* Includes */
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <math.h>
+#include <signal.h>
 
-#include "gecko_bglib.h"
-#include "mesh_generic_model_capi_types.h"
-#include "mesh_lighting_model_capi_types.h"
+#include "sl_bt_api.h"
+#include "sl_btmesh_api.h"
+#include "sl_btmesh_generic_model_capi_types.h"
+#include "sl_btmesh_lighting_model_capi_types.h"
+#include "sl_btmesh_lib.h"
+#include "sl_bt_types.h"
+#include "app_log.h"
+#include "app_assert.h"
+#include "sl_btmesh_ncp_host.h"
+#include "ncp_host.h"
+#include "sl_bt_ncp_host.h"
 
-#include "mesh_lib.h"
+#include "utils/timer.h"
 #include "app.h"
-#include "uart.h"
+
+// Optstring argument for getopt.
+#define OPTSTRING      NCP_HOST_OPTSTRING "h"
+
+// Usage info.
+#define USAGE          "\r\n%s " NCP_HOST_USAGE " [-h]\r\n"
+
+// Options info.
+#define OPTIONS    \
+  "\r\nOPTIONS\r\n"    \
+  NCP_HOST_OPTIONS \
+  "    -h  Print this help message.\r\n"
 
 /* Defines  *********************************************************** */
 #define SPLIT_TOKENS                            "\t\r\n\a "
@@ -45,13 +89,17 @@
 #define TIMER_ID_RETRANS          10
 #define TIMER_ID_FRIEND_FIND      20
 #define TIMER_ID_NODE_CONFIGURED  30
+#define NO_HANDS  40
 
 /// Timer Frequency used
-#define TIMER_CLK_FREQ ((uint32)32768)
+#define TIMER_CLK_FREQ ((uint32_t)32768)
 /// Convert miliseconds to timer ticks
 #define TIMER_MS_2_TIMERTICK(ms) ((TIMER_CLK_FREQ * ms) / 1000)
+
+#define SL_BTMESH_GENERIC_BASE_REGISTRY_INIT_SIZE 0
+#define SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL 3
+
 /* Static Variables *************************************************** */
-BGLIB_DEFINE();
 
 enum {
   noneReq,
@@ -60,7 +108,6 @@ enum {
   ctlReq
 };
 
-static pthread_t synchronizeThreadId;
 static pthread_mutex_t commandBufMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t syncFlagMetex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -84,20 +131,17 @@ static uint8_t colorTemperaturePercent = 0;
 static uint16_t lightness_level = 0;
 static uint16_t temperature_level = 0;
 /// number of on/off requests to be sent
-static uint8 request_count;
+static uint8_t request_count;
 static int operation = noneReq;
+
+static pthread_t consoleThreadId, appMainThreadId;
 
 /* Global Variables *************************************************** */
 
 /* Static Functions Declaractions ************************************* */
 static int getCMD(void);
 static int execCMD(void);
-static void ncpEvtHandler(void);
-static void *pSyncThread(void *pIn);
-
-void send_onoff_request(int retrans);
-void send_lightness_request(int retrans);
-void send_ctl_request(int retrans);
+static void consoleInit(void);
 
 static int onOffExec(int argc, const char *argv[]);
 static int lightnessExec(int argc, const char *argv[]);
@@ -152,6 +196,290 @@ static const CmdItem_t CMDs[] = {
 
 #define CMD_NUM()                                     (sizeof(CMDs) / sizeof(CmdItem_t))
 
+void app_init(int argc, char *argv[])
+{
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application init code here!                         //
+  // This is called once during start-up.                                    //
+  /////////////////////////////////////////////////////////////////////////////
+  sl_status_t sc;
+  int opt;
+
+  // Process command line options.
+  while ((opt = getopt(argc, argv, OPTSTRING)) != -1) {
+    switch (opt) {
+      // Print help.
+      case 'h':
+        app_log(USAGE, argv[0]);
+        app_log(OPTIONS);
+        exit(EXIT_SUCCESS);
+
+      // Process options for other modules.
+      default:
+        sc = ncp_host_set_option((char)opt, optarg);
+        if (sc != SL_STATUS_OK) {
+          app_log(USAGE, argv[0]);
+          exit(EXIT_FAILURE);
+        }
+        break;
+    }
+  }
+
+  resetSwitchVariables();
+  // Initialize NCP connection.
+  sc = ncp_host_init();
+  if (sc == SL_STATUS_INVALID_PARAMETER) {
+    app_log(USAGE, argv[0]);
+    exit(EXIT_FAILURE);
+  }
+  app_assert_status(sc);
+
+  SL_BTMESH_API_REGISTER();
+
+  app_log("Empty NCP-host initialised.\r\n");
+  app_log("Resetting NCP...\r\n");
+  // Reset NCP to ensure it gets into a defined state.
+  // Once the chip successfully boots, boot event should be received.
+  sl_bt_system_reset(sl_bt_system_boot_mode_normal);
+
+  if (-1 == pthread_create(&consoleThreadId,
+                            NULL,
+                            pConsoleThread,
+                            NULL)) {
+     perror("Error creating console thread.\r\n");
+     exit(1);
+  }
+
+  if (-1 == pthread_create(&appMainThreadId,
+                           NULL,
+                           pAppMainThread,
+                           NULL)) {
+    perror("Error creating App Main thread.\n");
+    exit(1);
+  }
+
+  startTimer(30000000, NO_HANDS);
+}
+
+/**************************************************************************//**
+ * Application Process Action.
+ *****************************************************************************/
+void app_process_action(void)
+{
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application code here!                              //
+  // This is called infinitely.                                              //
+  // Do not call blocking functions from here!                               //
+  /////////////////////////////////////////////////////////////////////////////
+}
+
+/**************************************************************************//**
+ * Application Deinit.
+ *****************************************************************************/
+void app_deinit(void)
+{
+  ncp_host_deinit();
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application deinit code here!                       //
+  // This is called once during termination.                                 //
+  /////////////////////////////////////////////////////////////////////////////
+}
+
+void sl_bt_on_event(sl_bt_msg_t *evt)
+{
+  sl_status_t sc;
+
+  switch (SL_BT_MSG_ID(evt->header)) {
+    // -------------------------------
+    // This event indicates the device has started and the radio is ready.
+    // Do not call any stack command before receiving this boot event!
+    case sl_bt_evt_system_boot_id:
+
+      resetSwitchVariables();
+      // Print boot message.
+      app_log("Bluetooth stack booted: v%d.%d.%d-b%d\r\n",
+                   evt->data.evt_system_boot.major,
+                   evt->data.evt_system_boot.minor,
+                   evt->data.evt_system_boot.patch,
+                   evt->data.evt_system_boot.build);
+
+      // Initialize Mesh stack in Node operation mode,
+      // wait for initialized event
+      app_log("Node init\r\n");
+      sc = sl_btmesh_node_init();
+      app_assert(sc == SL_STATUS_OK,
+                 "[E: 0x%d] Failed to init node\r\n",
+                 (int)sc);
+      pthread_mutex_lock(&syncFlagMetex);
+      hostTargetSynchronized = true;
+      pthread_mutex_unlock(&syncFlagMetex);
+      app_log("Node init done\r\n");
+
+      break;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Add additional event handlers here as your application requires!      //
+    ///////////////////////////////////////////////////////////////////////////
+
+    case sl_bt_evt_connection_opened_id:
+      app_log("evt:sl_bt_evt_connection_opened_id\r\n");
+      num_connections++;
+      conn_handle = evt->data.evt_connection_opened.connection;
+
+      // turn off lpn feature after GATT connection is opened
+      lpn_deinit();
+      break;
+
+    case sl_bt_evt_connection_closed_id:
+      app_log("evt:conn closed, reason 0x%x\r\n", evt->data.evt_connection_closed.reason);
+      conn_handle = 0xFF;
+      if (num_connections > 0) {
+        if (--num_connections == 0) {
+          // initialize lpn when there is no active connection
+          lpn_init();
+        }
+      }
+      break;
+
+    case sl_bt_evt_connection_parameters_id:
+      app_log("Connection params: interval %d, timeout %d\r\n",
+                evt->data.evt_connection_parameters.interval,
+                evt->data.evt_connection_parameters.timeout);
+      break;
+
+    case sl_bt_evt_advertiser_timeout_id:
+      // these events silently discarded
+      break;
+
+    default:
+      app_log_debug("Unhandled event [0x%08x]\r\n",
+                SL_BT_MSG_ID(evt->header));
+      break;
+    // -------------------------------
+    // Default event handler.
+  }
+}
+
+/**************************************************************************//**
+ * Bluetooth Mesh stack event handler.
+ * This overrides the dummy weak implementation.
+ *
+ * @param[in] evt Event coming from the Bluetooth Mesh stack.
+ *****************************************************************************/
+
+void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
+{
+  uint16_t result = 0;
+  switch (SL_BT_MSG_ID(evt->header)) {
+    case sl_btmesh_evt_node_initialized_id:
+    {
+      // Initialize generic client models
+      sl_btmesh_generic_client_init();
+
+      sl_btmesh_evt_node_initialized_t *pData = (sl_btmesh_evt_node_initialized_t *)&(evt->data);
+
+      if (pData->provisioned) {
+        app_log("Node is provisioned. address:%x, ivi:%d\r\n", pData->address, pData->iv_index);
+
+        primAddr = pData->address;
+        elemIndex = 0; // index of primary element is zero. This example has only one element.
+        provisioned = true;
+        switch_node_init();
+        // Initialize Low Power Node functionality
+        lpn_init();
+      } else {
+        app_log("Node is unprovisioned\r\n");
+
+        app_log("Starting unprovisioned beaconing...\r\n");
+        sl_btmesh_node_start_unprov_beaconing(0x3); // enable ADV and GATT provisioning bearer
+      }
+    }
+    break;
+
+    case sl_btmesh_evt_node_provisioned_id:
+      elemIndex = 0; // index of primary element is zero. This example has only one element.
+      primAddr = evt->data.evt_node_provisioned.address;
+      provisioned = true;
+      switch_node_init();
+      // try to initialize lpn after 30 seconds, if no configuration messages come
+      result = startTimer(30000000, TIMER_ID_NODE_CONFIGURED);
+      if (result) {
+        app_log("Timer failure?!  %x\r\n", result);
+      }
+      app_log("Node provisioned, got address=%x\r\n", evt->data.evt_node_provisioned.address);
+      break;
+
+    case sl_btmesh_evt_node_provisioning_failed_id:
+      app_log_error("Provisioning failed, code %x\r\n", evt->data.evt_node_provisioning_failed.result);
+      initiate_factory_reset(0);
+      break;
+
+    case sl_btmesh_evt_node_provisioning_started_id:
+      app_log("Started provisioning\r\n");
+      break;
+
+    case sl_btmesh_evt_node_key_added_id:
+      app_log("Got new %s key with index %x\r\n", evt->data.evt_node_key_added.type == 0 ? "network" : "application",
+                evt->data.evt_node_key_added.index);
+
+      app_log("Timer added");
+      // try to init lpn 5 seconds after adding key
+      result = startTimer(5000000, TIMER_ID_NODE_CONFIGURED);
+      if (result) {
+        app_log("Timer failure?!  %x\r\n", result);
+      }
+      break;
+
+    case sl_btmesh_evt_node_model_config_changed_id:
+    {
+      app_log("Model config changed\r\n");
+      // try to init lpn 5 seconds after configuration change
+      result = startTimer(5000000, TIMER_ID_NODE_CONFIGURED);
+      if (result) {
+        app_log("Timer failure?! %x\r\n", result);
+      }
+    }
+    break;
+
+    case sl_btmesh_evt_node_reset_id:
+      app_log("evt sl_btmesh_evt_node_reset_id\r\n");
+      initiate_factory_reset(1);
+      break;
+
+    case sl_btmesh_evt_lpn_friendship_established_id:
+      app_log("Friendship established\r\n");
+      break;
+
+    case sl_btmesh_evt_lpn_friendship_failed_id:
+      app_log("Friendship failed\r\n");
+      // try again in 2 seconds
+      result = startTimer(2000000, TIMER_ID_FRIEND_FIND);
+      if (result) {
+        app_log("Timer failure?!  %x\r\n", result);
+      }
+      break;
+
+    case sl_btmesh_evt_lpn_friendship_terminated_id:
+      app_log("Friendship terminated\r\n");
+      if (num_connections == 0) {
+        // try again in 2 seconds
+        result = startTimer(2000000, TIMER_ID_FRIEND_FIND);
+        if (result) {
+          app_log("Timer failure?! %x\r\n", result);
+        }
+      }
+      break;
+
+    default:
+      app_log_debug("Unhandled event [0x%08x]\r\n",
+                SL_BT_MSG_ID(evt->header));
+      break;
+    // -------------------------------
+    // Default event handler.
+  }
+}
+
 static void consoleInit(void)
 {
   pthread_mutex_lock(&commandBufMutex);
@@ -180,9 +508,23 @@ static inline void resetSwitchVariables(void)
   temperature_level = 0;
 }
 
+void initiate_factory_reset(int type)
+{
+  if (conn_handle != 0xFF) {
+    sl_bt_connection_close(conn_handle);
+  }
+
+  if (type) {
+    sl_bt_nvm_erase_all();
+    sleep(1);
+  }
+}
+
 void switch_node_init(void)
 {
-  mesh_lib_init(malloc, free, 8);
+  app_log("Mesh lib init\r\n");
+  mesh_lib_init(SL_BTMESH_GENERIC_BASE_REGISTRY_INIT_SIZE, SL_BTMESH_GENERIC_BASE_INCREMENT_CFG_VAL);
+  app_log("Mesh lib init done\r\n");
 }
 
 /***************************************************************************//**
@@ -190,7 +532,7 @@ void switch_node_init(void)
  ******************************************************************************/
 void lpn_init(void)
 {
-  uint16 result;
+  uint16_t result;
 
   // Do not initialize LPN if lpn is currently active
   // or any GATT connection is opened
@@ -199,28 +541,37 @@ void lpn_init(void)
   }
 
   // Initialize LPN functionality.
-  result = gecko_cmd_mesh_lpn_init()->result;
+  result = sl_btmesh_lpn_init();
   if (result) {
-    CS_OUTPUT("LPN init failed (0x%x)\r\n", result);
+    app_log("LPN init failed (0x%x)\r\n", result);
     return;
   }
   lpn_active = 1;
-  CS_OUTPUT("LPN initialized\r\n");
+  app_log("LPN initialized\r\n");
 
   // Configure the lpn with following parameters:
   // - Minimum friend queue length = 2
   // - Poll timeout = 5 seconds
-  result = gecko_cmd_mesh_lpn_configure(2, 5 * 1000)->result;
+  
+  // Configure LPN minimum friend queue length
+  result = sl_btmesh_lpn_config(0, 2);
   if (result) {
-    CS_OUTPUT("LPN conf failed (0x%x)\r\n", result);
+    app_log("LPN queue configuration failed (0x%hx)\r\n", result);
     return;
   }
 
-  CS_OUTPUT("trying to find friend...\r\n");
-  result = gecko_cmd_mesh_lpn_establish_friendship(0)->result;
+  // Configure LPN poll timeout
+  result = sl_btmesh_lpn_config(1, 5 * 1000);
+  if (result) {
+    app_log("LPN poll timeout configuration failed (0x%hx)\r\n", result);
+    return;
+  }
+
+  app_log("Trying to find friend...\r\n");
+  result = sl_btmesh_lpn_establish_friendship(0);
 
   if (result != 0) {
-    CS_OUTPUT("ret.code %x\r\n", result);
+    app_log("ret.code %x\r\n", result);
   }
 }
 
@@ -229,52 +580,33 @@ void lpn_init(void)
  ******************************************************************************/
 void lpn_deinit(void)
 {
-  uint16 result;
+  uint16_t result;
 
   if (!lpn_active) {
     return; // lpn feature is currently inactive
   }
 
-  result = gecko_cmd_hardware_set_soft_timer(0, // cancel friend finding timer
-                                             TIMER_ID_FRIEND_FIND,
-                                             1)->result;
+  result = startTimer(0, TIMER_ID_FRIEND_FIND);
 
   // Terminate friendship if exist
-  result = gecko_cmd_mesh_lpn_terminate_friendship()->result;
+  result = sl_btmesh_lpn_terminate_friendship(0);
   if (result) {
-    CS_OUTPUT("Friendship termination failed (0x%x)\r\n", result);
+    app_log("Friendship termination failed (0x%x)\r\n", result);
   }
   // turn off lpn feature
-  result = gecko_cmd_mesh_lpn_deinit()->result;
+  result = sl_btmesh_lpn_deinit();
   if (result) {
-    CS_OUTPUT("LPN deinit failed (0x%x)\r\n", result);
+    app_log("LPN deinit failed (0x%x)\r\n", result);
   }
   lpn_active = 0;
-  CS_OUTPUT("LPN deinitialized\r\n");
-}
-
-static void appMainInit(void)
-{
-  resetSwitchVariables();
-  /**
-   * Initialize BGLIB with our output function for sending messages.
-   */
-  BGLIB_INITIALIZE_NONBLOCK(on_message_send, uartRx, uartRxPeek);
-
-  if (-1 == pthread_create(&synchronizeThreadId,
-                           NULL,
-                           pSyncThread,
-                           NULL)) {
-    perror("Error creating sync thread.\n");
-    exit(1);
-  }
+  app_log("LPN deinitialized\r\n");
 }
 
 void *pConsoleThread(void *pIn)
 {
   consoleInit();
   for (;;) {
-    CS_OUTPUT("$ ");
+    app_log("$ ");
     getCMD();
     usleep(80 * 1000);
   }
@@ -283,294 +615,69 @@ void *pConsoleThread(void *pIn)
 
 void *pAppMainThread(void *pIn)
 {
-  appMainInit();
   for (;;) {
     execCMD();
-    ncpEvtHandler();
-  }
+    if(isTimerElapsed()) {
+      timerHandle(getElapsedTimer());
+    }
+  };
+
   return NULL;
 }
 
-static void *pSyncThread(void *pIn)
-{
-  struct gecko_cmd_packet *p;
-  pthread_detach(pthread_self());
-
-  CS_OUTPUT("Syncing");
-
-  do {
-    CS_OUTPUT("."); fflush(stdout);
-
-    p = gecko_peek_event();
-    if (p) {
-      switch (BGLIB_MSG_ID(p->header)) {
-        case gecko_evt_system_boot_id:
-        {
-          CS_OUTPUT("System booted. NCP target sync up\n");
-          // Initialize Mesh stack in Node operation mode, it will generate initialized event
-          uint16_t result = gecko_cmd_mesh_node_init()->result;
-          if (result) {
-            CS_ERROR("init failed (0x%x)", result);
-            exit(1);
-          }
-          pthread_mutex_lock(&syncFlagMetex);
-          hostTargetSynchronized = true;
-          pthread_mutex_unlock(&syncFlagMetex);
-        }
-        break;
-        default:
-          CS_OUTPUT("Unexpected event [ID:%08x]\n", BGLIB_MSG_ID(p->header));
-          break;
-      }
-    } else {
-      gecko_cmd_system_reset(0);
-      sleep(1);
-    }
-
-    if (hostTargetSynchronized) {
-      break;
-    }
-  } while (1);
-
-  pthread_exit(NULL);
-  return NULL;
-}
-
-static void initiate_factory_reset(int type)
-{
-  if (conn_handle != 0xFF) {
-    gecko_cmd_le_connection_close(conn_handle);
-  }
-
-  if (type) {
-    gecko_cmd_flash_ps_erase_all();
-    sleep(1);
-  }
-
-  appMainInit();
-}
-
-static void ncpEvtHandler(void)
-{
-  struct gecko_cmd_packet *evt = NULL;
+void timerHandle(int handle) {
   uint16_t result = 0;
-
-  if (!hostTargetSynchronized) {
-    return;
-  }
-  do {
-    if ((evt = gecko_peek_event()) == NULL) {
-      return;
-    }
-
-    switch (BGLIB_MSG_ID(evt->header)) {
-      case gecko_evt_system_boot_id:
-      {
-        CS_OUTPUT("Target reset autonomously, boot\n");
-        resetSwitchVariables();
-        // Initialize Mesh stack in Node operation mode, it will generate initialized event
-        result = gecko_cmd_mesh_node_init()->result;
-        if (result) {
-          CS_ERROR("init failed (0x%x)", result);
-          exit(1);
-        }
-        return;
-      }
-      break;
-
-      case gecko_evt_mesh_node_initialized_id:
-      {
-        CS_OUTPUT("node initialized\r\n");
-
-        // Initialize generic client models
-        gecko_cmd_mesh_generic_client_init();
-
-        struct gecko_msg_mesh_node_initialized_evt_t *pData = (struct gecko_msg_mesh_node_initialized_evt_t *)&(evt->data);
-
-        if (pData->provisioned) {
-          CS_OUTPUT("node is provisioned. address:%x, ivi:%d\r\n", pData->address, pData->ivi);
-
-          primAddr = pData->address;
-          elemIndex = 0; // index of primary element is zero. This example has only one element.
-          provisioned = true;
-          switch_node_init();
-          // Initialize Low Power Node functionality
-          lpn_init();
-        } else {
-          CS_OUTPUT("node is unprovisioned\r\n");
-
-          CS_OUTPUT("starting unprovisioned beaconing...\r\n");
-          gecko_cmd_mesh_node_start_unprov_beaconing(0x3); // enable ADV and GATT provisioning bearer
-        }
-      }
-      break;
-
-      case gecko_evt_mesh_node_provisioned_id:
-        elemIndex = 0; // index of primary element is zero. This example has only one element.
-        primAddr = evt->data.evt_mesh_node_provisioned.address;
-        provisioned = true;
-        switch_node_init();
-        // try to initialize lpn after 30 seconds, if no configuration messages come
-        result = gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(30000),
-                                                   TIMER_ID_NODE_CONFIGURED,
-                                                   1)->result;
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
-        CS_OUTPUT("node provisioned, got address=%x\r\n", evt->data.evt_mesh_node_provisioned.address);
-        break;
-
-      case gecko_evt_mesh_node_provisioning_failed_id:
-        CS_ERROR("provisioning failed, code %x\r\n", evt->data.evt_mesh_node_provisioning_failed.result);
-        initiate_factory_reset(0);
-        break;
-
-      case gecko_evt_mesh_node_provisioning_started_id:
-        CS_OUTPUT("Started provisioning\r\n");
-        break;
-
-      case gecko_evt_hardware_soft_timer_id:
-        /* CS_OUTPUT("soft_timer\n"); */
-        switch (evt->data.evt_hardware_soft_timer.handle) {
-          case TIMER_ID_RETRANS:
-            switch (operation) {
-              case onoffReq:
-                send_onoff_request(1); // param 1 indicates that this is a retransmission
-                break;
-              case lightnessReq:
-                send_lightness_request(1); // param 1 indicates that this is a retransmission
-                break;
-              case ctlReq:
-                send_ctl_request(1); // param 1 indicates that this is a retransmission
-                break;
-              default:
-                break;
-            }
-            // stop retransmission timer if it was the last attempt
-            if (request_count == 0) {
-              gecko_cmd_hardware_set_soft_timer(0, TIMER_ID_RETRANS, 0);
-            }
-            break;
-
-          case TIMER_ID_NODE_CONFIGURED:
-            if (!lpn_active) {
-              CS_OUTPUT("try to initialize lpn...\r\n");
-              lpn_init();
-            }
-            break;
-
-          case TIMER_ID_FRIEND_FIND:
-          {
-            CS_OUTPUT("trying to find friend...\r\n");
-            result = gecko_cmd_mesh_lpn_establish_friendship(0)->result;
-
-            if (result != 0) {
-              CS_OUTPUT("ret.code %x\r\n", result);
-            }
-          }
+  switch (handle) {
+    case TIMER_ID_RETRANS:
+      switch (operation) {
+        case onoffReq:
+          send_onoff_request(1); // param 1 indicates that this is a retransmission
           break;
-
-          default:
-            break;
-        }
-
-        break;
-
-      case gecko_evt_mesh_node_key_added_id:
-        CS_OUTPUT("got new %s key with index %x\r\n", evt->data.evt_mesh_node_key_added.type == 0 ? "network" : "application",
-                  evt->data.evt_mesh_node_key_added.index);
-
-        // try to init lpn 5 seconds after adding key
-        result = gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(5000),
-                                                   TIMER_ID_NODE_CONFIGURED,
-                                                   1)->result;
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
-        break;
-
-      case gecko_evt_mesh_node_model_config_changed_id:
-      {
-        CS_OUTPUT("model config changed\r\n");
-        // try to init lpn 5 seconds after configuration change
-        result = gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(5000),
-                                                   TIMER_ID_NODE_CONFIGURED,
-                                                   1)->result;
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
+        case lightnessReq:
+          send_lightness_request(1); // param 1 indicates that this is a retransmission
+          break;
+        case ctlReq:
+          send_ctl_request(1); // param 1 indicates that this is a retransmission
+          break;
+        default:
+          break;
+      }
+      // stop retransmission timer if it was the last attempt
+        app_log("ret.code %d\r\n", request_count);
+      if (request_count == 0) {
+        startTimer(0, TIMER_ID_RETRANS);
       }
       break;
 
-      case gecko_evt_le_connection_opened_id:
-        CS_OUTPUT("evt:gecko_evt_le_connection_opened_id\r\n");
-        num_connections++;
-        conn_handle = evt->data.evt_le_connection_opened.connection;
+    case TIMER_ID_NODE_CONFIGURED:
+      if (!lpn_active) {
+        app_log("Trying to initialize lpn...\r\n");
+        lpn_init();
+      }
+      break;
 
-        // turn off lpn feature after GATT connection is opened
-        lpn_deinit();
-        break;
+    case TIMER_ID_FRIEND_FIND:
+    {
+      app_log("Trying to find friend...\r\n");
+      result = sl_btmesh_lpn_establish_friendship(0);
 
-      case gecko_evt_le_connection_closed_id:
-        CS_OUTPUT("evt:conn closed, reason 0x%x\r\n", evt->data.evt_le_connection_closed.reason);
-        conn_handle = 0xFF;
-        if (num_connections > 0) {
-          if (--num_connections == 0) {
-            // initialize lpn when there is no active connection
-            lpn_init();
-          }
-        }
-        break;
-
-      case gecko_evt_mesh_node_reset_id:
-        CS_OUTPUT("evt gecko_evt_mesh_node_reset_id\r\n");
-        initiate_factory_reset(1);
-        break;
-
-      case gecko_evt_le_connection_parameters_id:
-        CS_OUTPUT("connection params: interval %d, timeout %d\r\n",
-                  evt->data.evt_le_connection_parameters.interval,
-                  evt->data.evt_le_connection_parameters.timeout);
-        break;
-
-      case gecko_evt_le_gap_adv_timeout_id:
-        // these events silently discarded
-        break;
-
-      case gecko_evt_mesh_lpn_friendship_established_id:
-        CS_OUTPUT("friendship established\r\n");
-        break;
-
-      case gecko_evt_mesh_lpn_friendship_failed_id:
-        CS_OUTPUT("friendship failed\r\n");
-        // try again in 2 seconds
-        result = gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(2000),
-                                                   TIMER_ID_FRIEND_FIND,
-                                                   1)->result;
-        if (result) {
-          CS_OUTPUT("timer failure?!  %x\r\n", result);
-        }
-        break;
-
-      case gecko_evt_mesh_lpn_friendship_terminated_id:
-        CS_OUTPUT("friendship terminated\r\n");
-        if (num_connections == 0) {
-          // try again in 2 seconds
-          result = gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(2000),
-                                                     TIMER_ID_FRIEND_FIND,
-                                                     1)->result;
-          if (result) {
-            CS_OUTPUT("timer failure?!  %x\r\n", result);
-          }
-        }
-        break;
-
-      default:
-        dbgPrint("Unhandled event [0x%08x]\n",
-                 BGLIB_MSG_ID(evt->header));
-        break;
+      if (result != 0) {
+        app_log("ret.code %x\r\n", result);
+      }
     }
-  } while (evt);
+    break;
+
+    case NO_HANDS:
+    {
+      switch_pos = !switch_pos;
+      send_onoff_request(0);
+      startTimer(30000000, NO_HANDS);
+    }
+    break;
+
+    default:
+      break;
+  }
 }
 
 static char **splitCmd(char *pIn, int *argc)
@@ -596,17 +703,17 @@ static char **splitCmd(char *pIn, int *argc)
 
 static void outputUsage(void)
 {
-  CS_OUTPUT("-------------------------------------------------------------\n");
-  CS_OUTPUT("Command\tUsage\t\tDescription\n");
+  app_log("-------------------------------------------------------------\r\n");
+  app_log("Command\t\tUsage\t\tDescription\r\n");
   for (int i = 0; i < CMD_NUM(); i++) {
-    CS_OUTPUT("%s%s%s%s%s\n",
+    app_log("%s%s%s%s%s\r\n",
               CMDs[i].command,
               CMDs[i].p1,
               CMDs[i].usage,
               CMDs[i].p2,
               CMDs[i].desc);
   }
-  CS_OUTPUT("-------------------------------------------------------------\n");
+  app_log("-------------------------------------------------------------\r\n");
 }
 
 static int findCmdLoc(uint8_t argc, const char *argv[])
@@ -614,7 +721,7 @@ static int findCmdLoc(uint8_t argc, const char *argv[])
   int pos = 0;
 
   for (int i = 0; i < argc; i++) {
-    dbgPrint("PARAM[%d] = [%s]\n",
+    app_log_debug("PARAM[%d] = [%s]\r\n",
              i,
              argv[i]);
   }
@@ -638,7 +745,7 @@ static int execCMD(void)
   pthread_mutex_lock(&commandBufMutex);
   if (BUF_PENDING()) {
     strcpy(locBuf, commandBuf[bufReadOffset]);
-    dbgPrint("Echo CMD [%s]\n",
+    app_log_debug("Echo CMD [%s]\r\n",
              commandBuf[bufReadOffset]);
     ID_INCREMENT(bufReadOffset);
     valid = 1;
@@ -661,7 +768,7 @@ static int execCMD(void)
 
   if (pos == CMD_NUM()) {
     /* CMD not supported */
-    CS_ERROR("CMD not supported.\n");
+    app_log_error("CMD not supported.\r\n");
     outputUsage();
     err = 1;
     goto out;
@@ -671,14 +778,14 @@ static int execCMD(void)
                           (const char **)argv);
 
   if (ret) {
-    CS_ERROR("[[%s]] CMD failed with error code [0x%04x]\n",
+    app_log_error("[[%s]] CMD failed with error code [0x%04x]\r\n",
              argv[0],
              ret);
     err = 2;
     goto out;
   }
 
-  CS_OUTPUT("[[%s]] CMD success\n",
+  app_log("[[%s]] CMD success\r\n",
             argv[0]);
 
   out:
@@ -701,7 +808,7 @@ static int getCMD(void)
 
     if ((wOffset == CONSOLE_RX_BUF_SIZE) && !err) {
       /* CMD too long */
-      CS_ERROR("CMD too long\n");
+      app_log_error("CMD too long\r\n");
       err = 1;
     }
   }
@@ -714,13 +821,14 @@ static int getCMD(void)
     pthread_mutex_lock(&commandBufMutex);
     if (BUF_FULL()) {
       /* CMD buffer full */
-      CS_ERROR("CMD buffer full\n");
+      app_log_error("CMD buffer full\r\n");
       err = 2;
     } else {
       /* Buffer not full, copy the local content to it */
       locBuf[wOffset] = '\0';
       strcpy(commandBuf[bufWriteOffset], locBuf);
       ID_INCREMENT(bufWriteOffset);
+      app_log("New command %d %d\r\n", bufWriteOffset, bufReadOffset);
     }
     pthread_mutex_unlock(&commandBufMutex);
   }
@@ -744,10 +852,10 @@ static int getCMD(void)
  ******************************************************************************/
 void send_onoff_request(int retrans)
 {
-  uint16 resp;
-  uint16 delay;
+  uint16_t resp;
+  uint16_t delay;
   struct mesh_generic_request req;
-  const uint32 transtime = 0; /* using zero transition time by default */
+  const uint32_t transtime = 0; /* using zero transition time by default */
 
   req.kind = mesh_generic_request_on_off;
   req.on_off = switch_pos ? MESH_GENERIC_ON_OFF_STATE_ON : MESH_GENERIC_ON_OFF_STATE_OFF;
@@ -775,9 +883,9 @@ void send_onoff_request(int retrans)
     );
 
   if (resp) {
-    CS_OUTPUT("gecko_cmd_mesh_generic_client_publish failed,code %x\r\n", resp);
+    app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
   } else {
-    CS_OUTPUT("request sent, trid = %u, delay = %d\r\n", trid, delay);
+    app_log("Request sent, trid = %u, delay = %d\r\n", trid, delay);
   }
 
   /* keep track of how many requests has been sent */
@@ -798,8 +906,8 @@ void send_onoff_request(int retrans)
  ******************************************************************************/
 void send_lightness_request(int retrans)
 {
-  uint16 resp;
-  uint16 delay;
+  uint16_t resp;
+  uint16_t delay;
   struct mesh_generic_request req;
 
   req.kind = mesh_lighting_request_lightness_actual;
@@ -828,9 +936,9 @@ void send_lightness_request(int retrans)
     );
 
   if (resp) {
-    CS_OUTPUT("gecko_cmd_mesh_generic_client_publish failed,code %x\r\n", resp);
+    app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
   } else {
-    CS_OUTPUT("request sent, trid = %u, delay = %d\r\n", trid, delay);
+    app_log("Request sent, trid = %u, delay = %d\r\n", trid, delay);
   }
 
   /* keep track of how many requests has been sent */
@@ -853,8 +961,8 @@ void send_lightness_request(int retrans)
  ******************************************************************************/
 void send_ctl_request(int retrans)
 {
-  uint16 resp;
-  uint16 delay;
+  uint16_t resp;
+  uint16_t delay;
   struct mesh_generic_request req;
 
   req.kind = mesh_lighting_request_ctl;
@@ -885,9 +993,9 @@ void send_ctl_request(int retrans)
     );
 
   if (resp) {
-    CS_OUTPUT("gecko_cmd_mesh_generic_client_publish failed,code %x\r\n", resp);
+    app_log("sl_btmesh_generic_client_publish failed,code %x\r\n", resp);
   } else {
-    CS_OUTPUT("request sent, trid = %u, delay = %d\r\n", trid, delay);
+    app_log("Request sent, trid = %u, delay = %d\r\n", trid, delay);
   }
 
   /* keep track of how many requests has been sent */
@@ -929,31 +1037,31 @@ static int onOffExec(int argc, const char *argv[])
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
   if (!provisioned) {
-    CS_OUTPUT("Node is unprovisioned, need to be provisioned first.\n");
+    app_log("Node is unprovisioned, need to be provisioned first.\r\n");
     return 4;
   }
 
-  CS_OUTPUT("Set light %s\n",
+  app_log("Set light %s\r\n",
             on == 1 ? "on" : "off");
 
   switch_pos = on;
   lightness_percent = (switch_pos == 1) ? 100 : 0;
 
 #if 0
-  return gecko_cmd_mesh_generic_client_publish(MESH_GENERIC_ON_OFF_CLIENT_MODEL_ID,
-                                               elemIndex,
-                                               trid++,
-                                               0,
-                                               0,
-                                               0,
-                                               mesh_generic_request_on_off,
-                                               1,
-                                               &switch_pos)->result;
+  return sl_btmesh_generic_client_publish(MESH_GENERIC_ON_OFF_CLIENT_MODEL_ID,
+                                          elemIndex,
+                                          trid++,
+                                          0,
+                                          0,
+                                          0,
+                                          mesh_generic_request_on_off,
+                                          1,
+                                          &switch_pos);
 #else
   request_count = 3; // request is sent 3 times to improve reliability
 
@@ -961,7 +1069,7 @@ static int onOffExec(int argc, const char *argv[])
   send_onoff_request(0);
 
   /* start a repeating soft timer to trigger re-transmission of the request after 50 ms delay */
-  gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(50), TIMER_ID_RETRANS, 0);
+  startTimer(50000, TIMER_ID_RETRANS);
   return 0;
 #endif
 }
@@ -993,30 +1101,30 @@ static int lightnessExec(int argc,
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
   if (!provisioned) {
-    CS_OUTPUT("Node is unprovisioned, need to be provisioned first.\n");
+    app_log("Node is unprovisioned, need to be provisioned first.\r\n");
     return 4;
   }
 
-  CS_OUTPUT("Set lightness to %d%%\n",
+  app_log("Set lightness to %d%%\r\n",
             (uint8_t)per);
 
   lightness_percent = (uint8_t)per;
   lightness_level = lightness_percent * 0xFFFF / 100;
 #if 0
-  return gecko_cmd_mesh_generic_client_publish(MESH_LIGHTING_LIGHTNESS_CLIENT_MODEL_ID,
-                                               elemIndex,
-                                               trid++,
-                                               0,
-                                               0,
-                                               0,
-                                               mesh_lighting_request_lightness_actual,
-                                               2,
-                                               (uint8_t *)&lightness_level)->result;
+  return sl_btmesh_generic_client_publish(MESH_LIGHTING_LIGHTNESS_CLIENT_MODEL_ID,
+                                          elemIndex,
+                                          trid++,
+                                          0,
+                                          0,
+                                          0,
+                                          mesh_lighting_request_lightness_actual,
+                                          2,
+                                          (uint8_t *)&lightness_level);
 #else
   request_count = 3; // request is sent 3 times to improve reliability
 
@@ -1024,7 +1132,7 @@ static int lightnessExec(int argc,
   send_lightness_request(0);
 
   /* start a repeating soft timer to trigger re-transmission of the request after 50 ms delay */
-  gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(50), TIMER_ID_RETRANS, 0);
+  startTimer(50000, TIMER_ID_RETRANS);
   return 0;
 #endif
 }
@@ -1056,16 +1164,16 @@ static int ctlExec(int argc,
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
   if (!provisioned) {
-    CS_OUTPUT("Node is unprovisioned, need to be provisioned first.\n");
+    app_log("Node is unprovisioned, need to be provisioned first.\r\n");
     return 4;
   }
 
-  CS_OUTPUT("Set Color Temperature to %d%%\n",
+  app_log("Set Color Temperature to %d%%\r\n",
             (uint8_t)per);
 
   colorTemperaturePercent = (uint8_t)per;
@@ -1074,15 +1182,15 @@ static int ctlExec(int argc,
   /* uint16_t tBuf[3] = { lightness_level, temperature_level, DELTA_UV }; */
 
 #if 0
-  return gecko_cmd_mesh_generic_client_publish(MESH_LIGHTING_CTL_CLIENT_MODEL_ID,
-                                               elemIndex,
-                                               trid++,
-                                               0,
-                                               0,
-                                               0,
-                                               mesh_lighting_request_ctl,
-                                               6,
-                                               (uint8_t *)&tBuf)->result;
+  return sl_btmesh_generic_client_publish(MESH_LIGHTING_CTL_CLIENT_MODEL_ID,
+                                          elemIndex,
+                                          trid++,
+                                          0,
+                                          0,
+                                          0,
+                                          mesh_lighting_request_ctl,
+                                          6,
+                                          (uint8_t *)&tBuf);
 #else
 
   request_count = 3; // request is sent 3 times to improve reliability
@@ -1091,7 +1199,7 @@ static int ctlExec(int argc,
   send_ctl_request(0);
 
   /* start a repeating soft timer to trigger re-transmission of the request after 50 ms delay */
-  gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TIMERTICK(50), TIMER_ID_RETRANS, 0);
+  startTimer(50000, TIMER_ID_RETRANS);
   return 0;
 #endif
 }
@@ -1115,11 +1223,11 @@ static int factoryResetExec(int argc, const char *argv[])
   }
 
   if (!hostTargetSynchronized) {
-    CS_ERROR("NCP host-target is not synchronized yet.\n");
+    app_log_error("NCP host-target is not synchronized yet.\r\n");
     return 5;
   }
 
-  CS_OUTPUT("%s Resetting...\n",
+  app_log("%s Resetting...\r\n",
             reset == 1 ? "Factory" : "Normal");
 
   initiate_factory_reset(reset);
@@ -1136,7 +1244,7 @@ static int usageExec(int argc,
 static int exitExec(int argc,
                     const char *argv[])
 {
-  CS_OUTPUT("Exit program\n");
+  app_log("Exit program\r\n");
   exit(0);
   return 0;
 }

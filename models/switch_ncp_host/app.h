@@ -1,52 +1,62 @@
-/*************************************************************************
-    > File Name: app.h
-    > Author: Kevin
-    > Created Time: 2019-01-09
-    >Description:
- ************************************************************************/
+/***************************************************************************//**
+ * @file
+ * @brief BTmesh NCP-host Switch Example Project.
+ *******************************************************************************
+ * # License
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
+ *******************************************************************************
+ *
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
+ *
+ ******************************************************************************/
 
 #ifndef APP_H
 #define APP_H
 
-#include <stdint.h>
-#include <string.h>
-
-#ifndef DEBUG_ON
-#define DEBUG_ON                                    0
+#ifdef __cplusplus
+extern "C" {
 #endif
-
-#define OUTPUT_PREFIX                               "> "
-#define DBG_PREFIX                                  "----- >> "
-#define ERROR_PREFIX                                "<<ERROR>> : "
 
 #define BASE_DEC                                    0
 #define BASE_HEX                                    1
 
-#if (DEBUG_ON == 1)
-#define dbgPrint(__fmt, ...)                 \
-  do {                                       \
-    printf(DBG_PREFIX __fmt, ##__VA_ARGS__); \
-    fflush(stdout);                          \
-  } while (0)
+/**************************************************************************//**
+ * Application Init.
+ *****************************************************************************/
+void app_init(int argc, char *argv[]);
 
-#else
-#define dbgPrint(...)
-#endif
+/**************************************************************************//**
+ * Application Process Action.
+ *****************************************************************************/
+void app_process_action(void);
 
-#define CS_OUTPUT(__fmt, ...)                   \
-  do {                                          \
-    printf(OUTPUT_PREFIX __fmt, ##__VA_ARGS__); \
-    fflush(stdout);                             \
-  } while (0)
+/**************************************************************************//**
+ * Application Deinit.
+ *****************************************************************************/
+void app_deinit(void);
 
-#define CS_ERROR(__fmt, ...)                      \
-  do {                                            \
-    CS_OUTPUT(ERROR_PREFIX __fmt, ##__VA_ARGS__); \
-  } while (0)
-
-typedef int (*pPrmCheckAndExecCB_t)(int argc,
-                                    const char *argv[]);
-
+/**************************************************************************//**
+ * Command handling.
+ *****************************************************************************/
+typedef int (*pPrmCheckAndExecCB_t)(int argc, const char *argv[]);
 typedef struct CmdItem{
   char *command;
   char *p1;
@@ -56,17 +66,38 @@ typedef struct CmdItem{
   pPrmCheckAndExecCB_t pCb;
 }CmdItem_t;
 
-int str2uint(const char *input,
-             size_t length,
-             uint32_t *p_ret);
+/**************************************************************************//**
+ * LPN
+ *****************************************************************************/
+void lpn_init(void);
+void lpn_deinit(void);
 
-int uint2str(uint64_t input,
-             uint8_t base_type,
-             size_t length,
-             char str[]);
+/**************************************************************************//**
+ * Init
+ *****************************************************************************/
+void switch_node_init(void);
+void initiate_factory_reset(int type);
+static inline void resetSwitchVariables(void);
 
+void send_onoff_request(int retrans);
+void send_lightness_request(int retrans);
+void send_ctl_request(int retrans);
+
+/**************************************************************************//**
+ * Threads for timing.
+ *****************************************************************************/
 void *pConsoleThread(void *pIn);
 void *pAppMainThread(void *pIn);
-void on_message_send(uint32_t msg_len,
-                     uint8_t* msg_data);
+void timerHandle(int handle);
+
+/**************************************************************************//**
+ * Helper functions.
+ *****************************************************************************/
+int str2uint(const char *input, size_t length, uint32_t *p_ret);
+int uint2str(uint64_t input, uint8_t base_type, size_t length, char str[]);
+
+#ifdef __cplusplus
+};
+#endif
+
 #endif

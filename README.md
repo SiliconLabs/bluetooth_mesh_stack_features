@@ -27,7 +27,7 @@
 
 # Silicon Labs Bluetooth Mesh Stack Feature Examples #
 
-This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage, ADK and various models.
+This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage and various models.
 
 ## Examples ##
 
@@ -36,7 +36,6 @@ This repository contains example projects which demonstrate the features of the 
 - Networking
 - Proxy Protocol
 - Models
-- ADK
 
 ## Reporting Bugs/Issues and Posting Questions and Comments ##
 

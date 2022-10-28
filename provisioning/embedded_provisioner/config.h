@@ -4,7 +4,7 @@
  * Embedded provisioner.
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -37,7 +37,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "bg_types.h"
+//#include "bg_types.h"
 
 // max number of SIG models in the DCD
 #define MAX_SIG_MODELS    16
@@ -45,25 +45,22 @@
 // max number of vendor models in the DCD
 #define MAX_VENDOR_MODELS 4
 
-typedef struct
-{
+typedef struct {
   uint16_t model_id;
   uint16_t vendor_id;
 } tsModel;
 
 /* struct for storing the content of one element in the DCD */
-typedef struct
-{
+typedef struct {
   uint16_t SIG_models[MAX_SIG_MODELS];
   uint8_t numSIGModels;
 
   tsModel vendor_models[MAX_VENDOR_MODELS];
   uint8_t numVendorModels;
-}tsDCD_ElemContent;
+} tsDCD_ElemContent;
 
 /* this struct is used to help decoding the raw DCD data */
-typedef struct
-{
+typedef struct {
   uint16_t companyID;
   uint16_t productID;
   uint16_t version;
@@ -73,8 +70,7 @@ typedef struct
 } tsDCD_Header;
 
 /* this struct is used to help decoding the raw DCD data */
-typedef struct
-{
+typedef struct {
   uint16_t location;
   uint8_t numSIGModels;
   uint8_t numVendorModels;

@@ -4,7 +4,7 @@
  * Embedded provisioner.
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -37,11 +37,35 @@
 #ifndef APP_H
 #define APP_H
 
+/* System header */
+#include <stdio.h>
+
 /* Provisioning strategy */
 typedef enum {
   eMESH_PROV_ALL=0,
   eMESH_PROV_NEXT
 } eMesh_Prov_Node_t;
+
+/***************************************************************************//**
+ * Application Init.
+ ******************************************************************************/
+void app_init(void);
+
+/***************************************************************************//**
+ * Application Process Action.
+ ******************************************************************************/
+void app_process_action(void);
+
+/***************************************************************************//**
+ * Shows the provisioning start information
+ ******************************************************************************/
+void app_show_btmesh_node_provisioning_started(uint16_t result);
+
+/***************************************************************************//**
+ * Shows the provisioning completed information
+ ******************************************************************************/
+void app_show_btmesh_node_provisioned(uint16_t address,
+                                      uint32_t iv_index);
 
 /* Initialize the stack */
 void initBLEMeshStack_app(void);

@@ -1,24 +1,43 @@
 /***************************************************************************//**
  * @file
- * @brief Self provisioning code
+ * @brief Application code
  *******************************************************************************
  * # License
- * <b>Copyright 2021 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
- * The licensor of this software is Silicon Laboratories Inc. Your use of this
- * software is governed by the terms of Silicon Labs Master Software License
- * Agreement (MSLA) available at
- * www.silabs.com/about-us/legal/master-software-license-agreement. This
- * software is distributed to you in Source Code format and is governed by the
- * sections of the MSLA applicable to Source Code.
+ * SPDX-License-Identifier: Zlib
  *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
+ *
+ *******************************************************************************
+ * # Experimental Quality
+ * This code has not been formally tested and is provided as-is. It is not
+ * suitable for production environments. In addition, this code will not be
+ * maintained and there may be no bug maintenance planned for these resources.
+ * Silicon Labs may update projects from time to time.
  ******************************************************************************/
 
 //#include <stdio.h>
 #include "sl_status.h"
 #include "sl_btmesh.h"
-#include "sl_app_log.h"
+#include "app_log.h"
 #include "sl_btmesh_dcd.h"
 #include "selfprov.h"
 
@@ -54,7 +73,7 @@ static uint16_t get_unicast_address(void)
         uint8_t type;
         status = sl_bt_system_get_identity_address(&btaddr, &type);
         (void)(status);
-        sl_app_log("  bt address %02x:%02x:%02x:%02x:%02x:%02x\r\n", btaddr.addr[5], btaddr.addr[4], btaddr.addr[3], btaddr.addr[2], btaddr.addr[1], btaddr.addr[0]);
+        app_log("  bt address %02x:%02x:%02x:%02x:%02x:%02x\r\n", btaddr.addr[5], btaddr.addr[4], btaddr.addr[3], btaddr.addr[2], btaddr.addr[1], btaddr.addr[0]);
 
         addr = *(uint16_t *)&btaddr.addr[0] ^
                *(uint16_t *)&btaddr.addr[2] ^
@@ -172,13 +191,13 @@ void self_provisioning(void)
     sl_status_t status;
     uint32_t count;
 
-    sl_app_log(">self provisioning ..\r\n");
+    app_log(">self provisioning ..\r\n");
 
     // Network key
     count = 0;
     status = sl_btmesh_node_get_key_count(0, &count);
     if (status != SL_STATUS_OK) {
-        sl_app_log(">failed to get netkey count (sts = %d)\r\n", status);
+        app_log(">failed to get netkey count (sts = %d)\r\n", status);
         return;
     }
 
@@ -193,18 +212,18 @@ void self_provisioning(void)
                                                       0        //key refresh in progress
                                                       );
         if (status != SL_STATUS_OK) {
-            sl_app_log(">failed to set provisioning data (sts = %d)\r\n", status);
+            app_log(">failed to set provisioning data (sts = %04x)\r\n", status);
             return;
         }
 
-        sl_app_log(">node self provisioned, address = %04x\r\n", addr);
+        app_log(">node self provisioned, address = %04x\r\n", addr);
     }
 
     // Application key
     count = 0;
     status = sl_btmesh_node_get_key_count(1, &count);
     if (status != SL_STATUS_OK) {
-        sl_app_log(">failed to get appkey count (sts = %d)\r\n", status);
+        app_log(">failed to get appkey count (sts = %d)\r\n", status);
         return;
     }
 
@@ -216,7 +235,7 @@ void self_provisioning(void)
                                               0        //netkey index
                                               );
         if (status != SL_STATUS_OK) {
-            sl_app_log(">failed to add appkey (sts = %d)\r\n", status);
+            app_log(">failed to add appkey (sts = %04x)\r\n", status);
             return;
         }
 
@@ -237,10 +256,10 @@ void self_provisioning(void)
                                                              p_sig_models[mod_index].model_id  //model id
                                                              );
                 if (status != SL_STATUS_OK) {
-                    sl_app_log(">failed to bind SIG model %04x (sts = %d)\r\n", p_sig_models[mod_index].model_id, status);
+                    app_log(">failed to bind SIG model %04x (sts = %d)\r\n", p_sig_models[mod_index].model_id, status);
                     break;
                 }
-                sl_app_log("  bind sig model [%d] %04x\r\n", elem_index, p_sig_models[mod_index].model_id);
+                app_log("  bind sig model [%d] %04x\r\n", elem_index, p_sig_models[mod_index].model_id);
             }
 
             if (mod_index < num_models) {
@@ -256,10 +275,10 @@ void self_provisioning(void)
                                                              p_vendor_models[mod_index].model_id    //model id
                                                              );
                 if (status != SL_STATUS_OK) {
-                    sl_app_log(">failed to bind vendor %04x model %04x (sts = %d)\r\n", p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id, status);
+                    app_log(">failed to bind vendor %04x model %04x (sts = %d)\r\n", p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id, status);
                     break;
                 }
-                sl_app_log("  bind vend model [%d] %04x %04x\r\n", elem_index, p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id);
+                app_log("  bind vend model [%d] %04x %04x\r\n", elem_index, p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id);
             }
 
             if (mod_index < num_models) {
@@ -298,10 +317,10 @@ void self_provisioning(void)
                                                                 GRP_SVR_PUB_CREDENTIALS  //friendship credentials flag
                                                                 );
                     if (status != SL_STATUS_OK) {
-                        sl_app_log(">failed to set svr pub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS, status);
+                        app_log(">failed to set svr pub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS, status);
                         break;
                     }
-                    sl_app_log("  set svr pub [%d] %04x -> %04x\r\n", elem_index, server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS);
+                    app_log("  set svr pub [%d] %04x -> %04x\r\n", elem_index, server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS);
 
                     // Server subscription
                     for (index = 0; index < num_svr_subs; ++index) {
@@ -311,10 +330,10 @@ void self_provisioning(void)
                                                                     svr_sub_list[index]  //subscription address
                                                                     );
                         if (status != SL_STATUS_OK) {
-                            sl_app_log(">failed to add svr sub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, svr_sub_list[index], status);
+                            app_log(">failed to add svr sub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, svr_sub_list[index], status);
                             break;
                         }
-                        sl_app_log("  add svr sub [%d] %04x <- %04x\r\n", elem_index, server_models[mod_index].model_id, svr_sub_list[index]);
+                        app_log("  add svr sub [%d] %04x <- %04x\r\n", elem_index, server_models[mod_index].model_id, svr_sub_list[index]);
                     }
 
                     if (index < num_svr_subs) {
@@ -341,10 +360,10 @@ void self_provisioning(void)
                                                                 GRP_CLI_PUB_CREDENTIALS  //friendship credentials flag
                                                                 );
                     if (status != SL_STATUS_OK) {
-                        sl_app_log(">failed to set cli pub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS, status);
+                        app_log(">failed to set cli pub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS, status);
                         break;
                     }
-                    sl_app_log("  set cli pub [%d] %04x -> %04x\r\n", elem_index, client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS);
+                    app_log("  set cli pub [%d] %04x -> %04x\r\n", elem_index, client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS);
 
                     // Client subscription
                     for (index = 0; index < num_cli_subs; ++index) {
@@ -354,10 +373,10 @@ void self_provisioning(void)
                                                                     cli_sub_list[index]  //subscription address
                                                                     );
                         if (status != SL_STATUS_OK) {
-                            sl_app_log(">failed to add cli sub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, cli_sub_list[index], status);
+                            app_log(">failed to add cli sub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, cli_sub_list[index], status);
                             break;
                         }
-                        sl_app_log("  add cli sub [%d] %04x <- %04x\r\n", elem_index, client_models[mod_index].model_id, cli_sub_list[index]);
+                        app_log("  add cli sub [%d] %04x <- %04x\r\n", elem_index, client_models[mod_index].model_id, cli_sub_list[index]);
                     }
 
                     if (index < num_cli_subs) {
@@ -375,7 +394,7 @@ void self_provisioning(void)
             return;
         }
 
-        sl_app_log(">node self configured, resetting ..\r\n");
+        app_log(">node self configured, resetting ..\r\n");
         sl_bt_system_reset(0);
     }
 }
