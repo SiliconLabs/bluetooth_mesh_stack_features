@@ -29,13 +29,41 @@
 
 This repository contains example projects which demonstrate the features of the Silicon Labs Bluetooth Mesh stack. The examples are categorized by the features that they demonstrate. These features are provisioning, networking, Proxy protocol, security, persistent storage and various models.
 
-## Examples ##
+## Examples and KBAs ##
 
-- Provisioning
-- Node
-- Networking
-- Proxy Protocol
-- Models
+### Embedded firmware examples
+
+- Models - **HSL Lighting Client Example**
+- Models - **Switch NCP Host Example**
+- Models - **Vendor Specific Model Examples**
+- Network - **IV Recovery Example**
+- Network - **IV Update Example**
+- Network - **Scanning BLE beacons in Bluetooth Mesh mode Example**
+- Node - **Node Memory Reset i.e. Erase NVM Example**
+- Provisioning - **Embedded Provisioner Example**
+- Provisioning - **Host Provisioner Example**
+- Provisioning - **Embedded Provisioner with OOB authentication Examples**
+- Provisioning - **Self Provisioning Examples**
+- Proxy Protocol - **Proxy Client Example**
+
+### Mobile examples
+
+- ADK -  **Reduction of GATT Connections for Provisioning with Configuration**
+
+### KBAs
+
+- ADK - *KBA_BT_0504 Reduction of GATT Connections for Provisioning*
+- C Dev Guide - *KBA_BT_0505 Bluetooth Mesh Training resources - C Developers Guide*
+- Get Started - *KBA_BT_0505 Bluetooth Mesh Training resources - Getting Started*
+- Models - *KBA_BT_0507 Bluetooth Mesh Host Switch Example*
+- Models - *KBA_BT_0502 Bluetooth Mesh Vendor Specific Model Example*
+- Network - *KBA_BT_0508 Scanning BLE beacons in Bluetooth Mesh mode*
+- Network - *KBA_BT_0503 Bluetooth Mesh Advertising Sets*
+- Network - *KBA_BT_0510 Removing Nodes From Bluetooth Mesh Network*
+- Provisioning - *KBA_BT_0501 BT Mesh embedded provisioner example*
+- Provisioning - *KBA_BT_0509 Bluetooth Mesh Host Provisioner*
+
+*There will be merging of the example readmes and KBAs later, currently might have duplicate information.*
 
 ## Reporting Bugs/Issues and Posting Questions and Comments ##
 
