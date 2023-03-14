@@ -6,11 +6,11 @@ Provisioner - A node that is capable of adding a device to a mesh network.
 
 Provisioning is the process of adding a new, unprovisioned device to a Bluetooth mesh network, such as a light bulb. The process is managed by a provisioner. A provisioner and an unprovisioned device follow a fixed procedure which is defined in the Bluetooth mesh specification. A provisioner provides the unprovisioned device with provisioning data that allows it to become a Bluetooh mesh node.
 
-This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device and extracting the Device Composition Database data from the freshly provisioned node.
+This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device and extracting the Device Composition Database data from the freshly provisioned node. The project also contains a Lightness/CTL Client implementation with all the necessary publish/subscribe configurations to be able to successfully control our ```Bluetooth Mesh - SoC Light``` example.
 
 ## Gecko SDK version ##
 
-GSDK v4.1.1
+GSDK v4.1.4
 
 ---
 
@@ -42,7 +42,10 @@ This project README assumes that the reader is familiar with the usage of Silico
     - config.c/h
   - Install the following components:
     - Application > Utility > Button Press
+    - Bluetooth Mesh > Stack Classes > Test
     - Bluetooth Mesh > Stack Classes > Provisioner
+    - Bluetooth Mesh > Stack Classes > CTL Client
+    - Bluetooth Mesh > Stack Classes > Lightness Client
     - Bluetooth Mesh > Stack Classes > Configuration Client
 
   <img src="images/install_button_press.png">
@@ -62,8 +65,8 @@ This project README assumes that the reader is familiar with the usage of Silico
   <img src="images/increase_values_2.png">
 
   - When everything is configured, build and flash the project
-  - Flash the other board with ```Bluetooth Mesh - SoC Empty``` example project
-  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network. If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node.
+  - Flash the other board with ```Bluetooth Mesh - SoC Light``` example project
+  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 1``` for more then 5 seconds on the Provisioner device, you can provision the newly noticed device into your network. If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node. After you get to ```configuration complete```, you should be able to control the LEDs of the Node device with the buttons of the Provisioner device.
 
   <img src="images/dcd_infos.png">
 

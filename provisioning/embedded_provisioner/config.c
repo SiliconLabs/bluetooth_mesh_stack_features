@@ -46,13 +46,12 @@
 
 // DCD content of the last provisioned device. (the example code decodes up to two elements, but
 // only the primary element is used in the configuration to simplify the code)
-tsDCD_ElemContent _sDCD_Prim_t;
-tsDCD_ElemContent _sDCD_2nd_t; /* second DCD element is decoded if present, but not used for anything (just informative) */
+tsDCD_ElemContent _sDCD_Prim;
+tsDCD_ElemContent _sDCD_2nd; /* second DCD element is decoded if present, but not used for anything (just informative) */
 
-extern uint8_t _dcd_raw[256]; // raw content of the DCD received from remote node
-extern uint8_t _dcd_raw_len;
+uint8_t _dcd_raw[256]; // raw content of the DCD received from remote node
+uint8_t _dcd_raw_len;
 
-static void DCD_decode_element(tsDCD_Elem *pElem, tsDCD_ElemContent *pDest);
 
 void DCD_decode(void)
 {
@@ -67,7 +66,7 @@ void DCD_decode(void)
   pElem = (tsDCD_Elem *)pHeader->payload;
 
   // decode primary element:
-  DCD_decode_element(pElem, &_sDCD_Prim_t);
+  DCD_decode_element(pElem, &_sDCD_Prim);
 
   // check if DCD has more than one element by calculating where we are currently at the raw
   // DCD array and compare against the total size of the raw DCD:
@@ -78,7 +77,7 @@ void DCD_decode(void)
     pElem = (tsDCD_Elem *)&(_dcd_raw[byte_offset]);
 
     app_log("Decoding 2nd element (just informative, not used for anything)\r\n");
-    DCD_decode_element(pElem, &_sDCD_2nd_t);
+    DCD_decode_element(pElem, &_sDCD_2nd);
   }
 }
 
@@ -86,7 +85,7 @@ void DCD_decode(void)
  *  pElem: pointer to the beginning of element in the raw DCD data
  *  pDest: pointer to a struct where the decoded values are written
  * */
-static void DCD_decode_element(tsDCD_Elem *pElem, tsDCD_ElemContent *pDest)
+void DCD_decode_element(tsDCD_Elem *pElem, tsDCD_ElemContent *pDest)
 {
   uint16_t *pu16;
   int i;

@@ -40,7 +40,7 @@
 //#include "bg_types.h"
 
 // max number of SIG models in the DCD
-#define MAX_SIG_MODELS    16
+#define MAX_SIG_MODELS    25
 
 // max number of vendor models in the DCD
 #define MAX_VENDOR_MODELS 4
@@ -78,4 +78,15 @@ typedef struct {
 } tsDCD_Elem;
 
 void DCD_decode(void);
+
+void DCD_decode_element(tsDCD_Elem *pElem, tsDCD_ElemContent *pDest);
+
+// DCD content of the last provisioned device. (the example code decodes up to two elements, but
+// only the primary element is used in the configuration to simplify the code)
+extern tsDCD_ElemContent _sDCD_Prim;
+extern tsDCD_ElemContent _sDCD_2nd; /* second DCD element is decoded if present, but not used for anything (just informative) */
+
+extern uint8_t _dcd_raw[256]; // raw content of the DCD received from remote node
+extern uint8_t _dcd_raw_len;
+
 #endif
