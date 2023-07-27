@@ -130,7 +130,10 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
     case sl_bt_evt_system_boot_id:
       // Init the device as provisioner
       sc = sl_btmesh_prov_init();
-      app_assert_status_f(sc, "sl_btmesh_prov_init failed\r\n");
+      // Needed because of self-initializing component
+      if(sc !=  SL_STATUS_INVALID_STATE) {
+        app_assert_status_f(sc, "sl_btmesh_prov_init failed\r\n");
+      }
       break;
     case sl_bt_evt_scanner_scan_report_id:
       /*app_log_debug("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
