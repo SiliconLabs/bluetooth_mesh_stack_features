@@ -197,7 +197,7 @@ void self_provisioning(void)
     count = 0;
     status = sl_btmesh_node_get_key_count(0, &count);
     if (status != SL_STATUS_OK) {
-        app_log(">failed to get netkey count (sts = %d)\r\n", status);
+        app_log(">failed to get netkey count (sts = %ld)\r\n", status);
         return;
     }
 
@@ -212,7 +212,7 @@ void self_provisioning(void)
                                                       0        //key refresh in progress
                                                       );
         if (status != SL_STATUS_OK) {
-            app_log(">failed to set provisioning data (sts = %04x)\r\n", status);
+            app_log(">failed to set provisioning data (sts = %04lx)\r\n", status);
             return;
         }
 
@@ -223,7 +223,7 @@ void self_provisioning(void)
     count = 0;
     status = sl_btmesh_node_get_key_count(1, &count);
     if (status != SL_STATUS_OK) {
-        app_log(">failed to get appkey count (sts = %d)\r\n", status);
+        app_log(">failed to get appkey count (sts = %ld)\r\n", status);
         return;
     }
 
@@ -235,7 +235,7 @@ void self_provisioning(void)
                                               0        //netkey index
                                               );
         if (status != SL_STATUS_OK) {
-            app_log(">failed to add appkey (sts = %04x)\r\n", status);
+            app_log(">failed to add appkey (sts = %04lx)\r\n", status);
             return;
         }
 
@@ -256,7 +256,7 @@ void self_provisioning(void)
                                                              p_sig_models[mod_index].model_id  //model id
                                                              );
                 if (status != SL_STATUS_OK) {
-                    app_log(">failed to bind SIG model %04x (sts = %d)\r\n", p_sig_models[mod_index].model_id, status);
+                    app_log(">failed to bind SIG model %04x (sts = %ld)\r\n", p_sig_models[mod_index].model_id, status);
                     break;
                 }
                 app_log("  bind sig model [%d] %04x\r\n", elem_index, p_sig_models[mod_index].model_id);
@@ -275,7 +275,7 @@ void self_provisioning(void)
                                                              p_vendor_models[mod_index].model_id    //model id
                                                              );
                 if (status != SL_STATUS_OK) {
-                    app_log(">failed to bind vendor %04x model %04x (sts = %d)\r\n", p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id, status);
+                    app_log(">failed to bind vendor %04x model %04x (sts = %ld)\r\n", p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id, status);
                     break;
                 }
                 app_log("  bind vend model [%d] %04x %04x\r\n", elem_index, p_vendor_models[mod_index].vendor_id, p_vendor_models[mod_index].model_id);
@@ -317,7 +317,7 @@ void self_provisioning(void)
                                                                 GRP_SVR_PUB_CREDENTIALS  //friendship credentials flag
                                                                 );
                     if (status != SL_STATUS_OK) {
-                        app_log(">failed to set svr pub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS, status);
+                        app_log(">failed to set svr pub model %04x address %04x (sts = %ld)\r\n", server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS, status);
                         break;
                     }
                     app_log("  set svr pub [%d] %04x -> %04x\r\n", elem_index, server_models[mod_index].model_id, GRP_SVR_PUB_ADDRESS);
@@ -330,7 +330,7 @@ void self_provisioning(void)
                                                                     svr_sub_list[index]  //subscription address
                                                                     );
                         if (status != SL_STATUS_OK) {
-                            app_log(">failed to add svr sub model %04x address %04x (sts = %d)\r\n", server_models[mod_index].model_id, svr_sub_list[index], status);
+                            app_log(">failed to add svr sub model %04x address %04x (sts = %ld)\r\n", server_models[mod_index].model_id, svr_sub_list[index], status);
                             break;
                         }
                         app_log("  add svr sub [%d] %04x <- %04x\r\n", elem_index, server_models[mod_index].model_id, svr_sub_list[index]);
@@ -360,7 +360,7 @@ void self_provisioning(void)
                                                                 GRP_CLI_PUB_CREDENTIALS  //friendship credentials flag
                                                                 );
                     if (status != SL_STATUS_OK) {
-                        app_log(">failed to set cli pub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS, status);
+                        app_log(">failed to set cli pub model %04x address %04x (sts = %ld)\r\n", client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS, status);
                         break;
                     }
                     app_log("  set cli pub [%d] %04x -> %04x\r\n", elem_index, client_models[mod_index].model_id, GRP_CLI_PUB_ADDRESS);
@@ -373,7 +373,7 @@ void self_provisioning(void)
                                                                     cli_sub_list[index]  //subscription address
                                                                     );
                         if (status != SL_STATUS_OK) {
-                            app_log(">failed to add cli sub model %04x address %04x (sts = %d)\r\n", client_models[mod_index].model_id, cli_sub_list[index], status);
+                            app_log(">failed to add cli sub model %04x address %04x (sts = %ld)\r\n", client_models[mod_index].model_id, cli_sub_list[index], status);
                             break;
                         }
                         app_log("  add cli sub [%d] %04x <- %04x\r\n", elem_index, client_models[mod_index].model_id, cli_sub_list[index]);
