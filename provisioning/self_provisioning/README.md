@@ -10,7 +10,7 @@ This example is aimed to demonstrate how to set up a fully pre-configured Blueto
 
 ## Gecko SDK version ##
 
-GSDK v4.1.1
+GSDK v4.3.0 or newer
 
 ---
 
