@@ -14,7 +14,7 @@ This example project is aimed to demonstrate how to erase the entire Bluetooth M
 
 ## Gecko SDK version ##
 
-GSDK v4.1.1
+GSDK v4.3.1
 
 ---
 

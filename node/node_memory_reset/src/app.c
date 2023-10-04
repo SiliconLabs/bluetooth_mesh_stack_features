@@ -41,7 +41,7 @@
 
 #include "gatt_db.h"
 
-#include "sl_simple_timer.h"
+#include "app_timer.h"
 
 /* Buttons and LEDs headers */
 #include "sl_simple_button_instances.h"
@@ -92,10 +92,10 @@
 /// Length of boot error message buffer
 #define BOOT_ERR_MSG_BUF_LEN           30
 // periodic timer handle
-static sl_simple_timer_t app_led_blinking_timer;
+static app_timer_t app_led_blinking_timer;
 
 // periodic timer callback
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data);
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data);
 
 /*******************************************************************************
  * Global variables
@@ -153,7 +153,7 @@ static void set_device_name(uuid_128 *uuid)
                                                    strlen(name),
                                                    (uint8_t *)name);
   if (result) {
-    app_log("sl_bt_gatt_server_write_attribute_value failed, code %x\r\n",
+    app_log("sl_bt_gatt_server_write_attribute_value failed, code %lx\r\n",
             result);
   }
 
@@ -213,7 +213,7 @@ static void handle_boot_event(void)
     if (sc) {
       snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
       lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%x)\r\n", sc);
+      app_log("Initialization failed (0x%lx)\r\n", sc);
     } else {
       sc = sl_btmesh_node_get_uuid(&uuid);
       app_assert_status_f(sc, "Failed to get UUID\n");
@@ -294,7 +294,11 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         // Enable ADV and GATT provisioning bearer
         sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
 
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
+        switch (sc) {
+          case 0x00: break;
+          case 0x02: app_log("Unprovisioned beaconing already running\r\n"); break;
+          default: app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
+        }
       }
       break;
 
@@ -316,11 +320,11 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
   // Change buttons to LEDs in case of shared pin
   app_led_change_buttons_to_leds();
 
-  sl_status_t sc = sl_simple_timer_start(&app_led_blinking_timer,
-                                         APP_LED_BLINKING_TIMEOUT,
-                                         app_led_blinking_timer_cb,
-                                         NO_CALLBACK_DATA,
-                                         true);
+  sl_status_t sc = app_timer_start(&app_led_blinking_timer,
+                                   APP_LED_BLINKING_TIMEOUT,
+                                   app_led_blinking_timer_cb,
+                                   NO_CALLBACK_DATA,
+                                   true);
 
   app_assert_status_f(sc, "Failed to start periodic timer\n");
 
@@ -331,7 +335,7 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
 void sl_btmesh_on_node_provisioned(uint16_t address,
                                    uint32_t iv_index)
 {
-  sl_status_t sc = sl_simple_timer_stop(&app_led_blinking_timer);
+  sl_status_t sc = app_timer_stop(&app_led_blinking_timer);
   app_assert_status_f(sc, "Failed to stop periodic timer\n");
   // Turn off LED
   init_done = true;
@@ -343,7 +347,7 @@ void sl_btmesh_on_node_provisioned(uint16_t address,
 /***************************************************************************//**
  * Timer Callbacks
  ******************************************************************************/
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data)
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data)
 {
   (void)data;
   (void)handle;
