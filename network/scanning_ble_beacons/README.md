@@ -65,7 +65,7 @@ static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp)
 
 ## Gecko SDK version ##
 
-- Bluetooth SDK v4.1.0
+- Bluetooth SDK v4.3.1
 
 ## Hardware Required ##
 
