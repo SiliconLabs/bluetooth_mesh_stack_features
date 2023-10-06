@@ -29,6 +29,8 @@
 #include "app_log.h"
 #include "app_assert.h"
 
+#include "btmesh_change.h"
+
 /* Buttons and LEDs headers */
 #include "app_button_press.h"
 #include "sl_simple_button.h"
@@ -45,7 +47,7 @@
 #endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 
 /* Switch app headers */
-#include "sl_simple_timer.h"
+#include "app_timer.h"
 #include "sl_btmesh_factory_reset.h"
 #include "sl_btmesh_lighting_client.h"
 #include "sl_btmesh_ctl_client.h"
@@ -99,10 +101,10 @@
 #endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 
 /// periodic timer handle
-static sl_simple_timer_t app_led_blinking_timer;
+static app_timer_t app_led_blinking_timer;
 
 /// periodic timer callback
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data);
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data);
 // Handling of boot event
 static void handle_boot_event(void);
 // Handling of le connection events
@@ -152,16 +154,16 @@ static void print_seqnum(void)
 
   sc = sl_btmesh_node_get_element_seqnum(0, &seqnum);
   if (sc == SL_STATUS_OK) {
-    LOGI("Test Get SEQ  - 0x%08x\r\n", seqnum);
+    LOGI("Test Get SEQ  - 0x%08lx\r\n", seqnum);
   } else {
-    LOGE("Get SEQ ERR - 0x%04x\r\n", sc);
+    LOGE("Get SEQ ERR - 0x%04lx\r\n", sc);
   }
 
   sc = sl_btmesh_node_get_seq_remaining(0, &count);
   if (sc == SL_STATUS_OK) {
-    LOGI("Remaining SEQ - 0x%08x\r\n", count);
+    LOGI("Remaining SEQ - 0x%08lx\r\n", count);
   } else {
-    LOGE("Get Remaining SEQ ERR - 0x%04x\r\n", sc);
+    LOGE("Get Remaining SEQ ERR - 0x%04lx\r\n", sc);
   }
 }
 
@@ -201,7 +203,7 @@ static void test_iv_update_recovery(test_p_t test_mode)
         iv_update_state = ONGOING;
         LOGI("Request IV Update SUCCESS\r\n");
       } else {
-        LOGE("Request IV Update FAILED - 0x%04x\r\n", sc);
+        LOGE("Request IV Update FAILED - 0x%04lx\r\n", sc);
       }
       break;
     case test_update:
@@ -211,16 +213,16 @@ static void test_iv_update_recovery(test_p_t test_mode)
       sc = sl_btmesh_test_set_iv_index(iv_index + MIN(TEST_IV_HOP, MAX_IV_HOP - 1));
       if (sc == SL_STATUS_OK) {
         iv_index += MIN(TEST_IV_HOP, MAX_IV_HOP - 1);
-        LOGI("IV index has been set to %d\r\n", iv_index);
+        LOGI("IV index has been set to %ld\r\n", iv_index);
       } else {
-        LOGE("IV index set error - 0x%04x\r\n", sc);
+        LOGE("IV index set error - 0x%04lx\r\n", sc);
       }
       sc = sl_btmesh_test_set_ivupdate_state(1);
       if (sc == SL_STATUS_OK) {
         iv_update_state = ONGOING;
-        LOGI("Force Set IV Update To Ongoing\r\n", iv_index);
+        LOGI("Force Set IV Update To Ongoing %ld\r\n", iv_index);
       } else {
-        LOGE("Force Set IV Update To Ongoing Error - 0x%04x\r\n", sc);
+        LOGE("Force Set IV Update To Ongoing Error - 0x%04lx\r\n", sc);
       }
       break;
     case test_end:
@@ -232,7 +234,7 @@ static void test_iv_update_recovery(test_p_t test_mode)
         iv_update_state = IDLE;
         LOGI("Force Ending IV Update SUCCESS\r\n");
       } else {
-        LOGE("Force Ending IV Update FAILED - 0x%04x\r\n", sc);
+        LOGE("Force Ending IV Update FAILED - 0x%04lx\r\n", sc);
       }
       break;
     default:
@@ -344,8 +346,8 @@ static void set_device_name(bd_addr *addr)
                                                    strlen(name),
                                                    (uint8_t *)name);
   if (result) {
-    app_log("sl_bt_gatt_server_write_attribute_value() failed, code %x\r\n",
-               result);
+    app_log("sl_bt_gatt_server_write_attribute_value() failed, code %lx\r\n",
+            result);
   }
 
   // Show device name on the LCD
@@ -493,7 +495,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
 #ifdef IV_UPDATE_IMPLEMENTATION
     case sl_btmesh_evt_node_changed_ivupdate_state_id:
-      LOGI("Current IV - %d, Ongoing - %s\r\n",
+      LOGI("Current IV - %ld, Ongoing - %s\r\n",
            evt->data.evt_node_changed_ivupdate_state.iv_index,
            evt->data.evt_node_changed_ivupdate_state.state ? "YES" : "NO");
       iv_index = evt->data.evt_node_changed_ivupdate_state.iv_index;
@@ -501,7 +503,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       break;
 
     case sl_btmesh_evt_node_ivrecovery_needed_id:
-      LOGI("IV recovery is needed. Current IV = %d, Received(Network) IV = %d\r\n",
+      LOGI("IV recovery is needed. Current IV = %ld, Received(Network) IV = %ld\r\n",
            evt->data.evt_node_ivrecovery_needed.node_iv_index,
            evt->data.evt_node_ivrecovery_needed.network_iv_index);
       break;
@@ -586,11 +588,11 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
   // Change buttons to LEDs in case of shared pin
   change_buttons_to_leds();
 
-  sl_status_t sc = sl_simple_timer_start(&app_led_blinking_timer,
-                                         APP_LED_BLINKING_TIMEOUT,
-                                         app_led_blinking_timer_cb,
-                                         NO_CALLBACK_DATA,
-                                         true);
+  sl_status_t sc = app_timer_start(&app_led_blinking_timer,
+                                   APP_LED_BLINKING_TIMEOUT,
+                                   app_led_blinking_timer_cb,
+                                   NO_CALLBACK_DATA,
+                                   true);
 
   app_assert(sc == SL_STATUS_OK,
              "[E: 0x%04x] Failed to start periodic timer\n",
@@ -603,7 +605,7 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
 void sl_btmesh_on_node_provisioned(uint16_t address,
                                    uint32_t iv_index)
 {
-  sl_status_t sc = sl_simple_timer_stop(&app_led_blinking_timer);
+  sl_status_t sc = app_timer_stop(&app_led_blinking_timer);
   app_assert(sc == SL_STATUS_OK,
              "[E: 0x%04x] Failed to stop periodic timer\n",
              (int)sc);
@@ -625,7 +627,7 @@ void sl_btmesh_on_node_provisioned(uint16_t address,
 /***************************************************************************//**
  * Timer Callbacks
  ******************************************************************************/
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data)
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data)
 {
   (void)data;
   (void)handle;

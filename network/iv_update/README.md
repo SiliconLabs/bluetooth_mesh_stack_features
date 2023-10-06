@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This example project is aimed to demonstrate the IV Index update process
+This example project is aimed to demonstrate the IV Index update process.
 
 A Nonce is a number which may only be used once. Each time a message is encrypted, it is given a new nonce value. The nonce has
 various parts to it, including a sequence number and a value known as the IV Index. To ensure nonce values are unique for each new
@@ -35,21 +35,21 @@ This project README assumes that the reader is familiar with the usage of Silico
   - This Example is based on the ```Bluetooth Mesh - SoC Light``` included with the Silicon Labs GSDK
   - Create a new project based on the ```Bluetooth Mesh - SoC Light``` example
   - Add two "Platform > Driver > LED > Simple LED" components, named ```led0``` and ```led1```
-  <img src="images/bluetooth_mesh_simple_led.png"> 
+  ![bluetooth_mesh_simple_led](images/bluetooth_mesh_simple_led.png)
   - Also, install the following components the same way as the one above:
     - Application > Utility > Button Press
     - Bluetooth Mesh > Models > Lighting > CTL Client
     - Bluetooth Mesh > Models > Lighting > Lightness Client
   - Install the "Bluetooth Mesh > Stack Classes > Test" component
-  <img src="images/bluetooth_mesh_test_component.png">
+  ![bluetooth_mesh_test_component](images/bluetooth_mesh_test_component.png)
   Without this component, the test fuctions would return ((sl_status_t)0x000F) SL_STATUS_NOT_SUPPORTED during the initialization
-  <img src="images/bluetooth_mesh_test_missing.png">
-  <img src="images/bluetooth_mesh_test_installed.png">
+  ![bluetooth_mesh_test_missing](images/bluetooth_mesh_test_missing.png)
+  ![bluetooth_mesh_test_installed](images/bluetooth_mesh_test_installed.png)
   - Replace the original ```app.c``` file with the provided one, build and flash the board
   - Flash the other board with the ```Bluetooth Mesh - SoC Light``` demo or unchanged example
   - If everything went right, you should see the boards booting up 
   - If both of the WSTKs are running, provision them into the same network with SiliconLabs's own Bluetooth Mesh Application for Android/iOS.
-<img src="images/bluetooth_mesh_provision.jpg">
+  ![bluetooth_mesh_provision](images/bluetooth_mesh_provision.jpg)
   - After successful provisioning, create a Group for the two boards and assign them the roles of ```Generic Lightness Client``` for the "Custom" and ```Generic Lightness Server``` for the "Demo" board.
   - If everything is fine, you should be able to control the LEDs of the "Demo" board with the buttons on the "Custom" board
   - You can trigger the normal or force IV Update request with long pressing of the buttons on the WSTK
