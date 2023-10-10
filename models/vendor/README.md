@@ -2,7 +2,7 @@
 
 ## Details
 ### Introduction
-This article aims at helping those developers who want to use the vendor specific models in their Bluetooth Mesh products.
+This example aims at helping those developers who want to use the vendor specific models in their Bluetooth Mesh products.
 
 ### What are Models?
 The concept "Model" is defined in the section 2.3.6 of [Mesh Profile Specification 1.0](https://www.bluetooth.com/specifications/specs/mesh-profile-1-0-1/). It’s good to understand the concepts client and server model; in the following example, we will use this architecture.
@@ -66,17 +66,17 @@ The example supports both being provisioned by a standard provisioner, or being 
 ### Server and Client Model
 Before introducing the server and client model, there are 3 concepts I want to introduce firstly. See figure 1, figure 2 and figure 3. This are the standard behaviors that the client and server models follow, which means all the opcodes defined later with the name “xxx Get/Set/Set unacknowledged” will use the “Reliable Get/Reliable Set/Unreliable Set”.
 
-![Reliable Get Flow Chart](doc/reliable_get_flow.png)
+![Reliable Get Flow Chart](images/reliable_get_flow.png)
 <p align="center">
     Figure 1. Reliable Get
 </p>
 
-![Reliable Set Flow Chart](doc/reliable_set_flow.png)
+![Reliable Set Flow Chart](images/reliable_set_flow.png)
 <p align="center">
     Figure 2. Reliable Set
 </p>
 
-![Unreliable Set Flow Chart](doc/unreliable_set_flow.png)
+![Unreliable Set Flow Chart](images/unreliable_set_flow.png)
 <p align="center">
     Figure 3. Unreliable Set
 </p>
@@ -129,12 +129,12 @@ To be simple, there is only one group created and the provisioner configures bot
 ## Running the example
 Open the serial terminals for each node. By default, the nodes will self-provision themselves. The following figures show what happens when you press `PB1 on client -> PB0 on client -> PB1 on server -> PB0 on server`.
 
-![Vendor Client Terminal](doc/vendor_client_terminal.png)
+![Vendor Client Terminal](images/vendor_client_terminal.png)
 <p align="center">
     Figure 4. Client Serial Terminal
 </p>
 
-![Vendor Client Terminal](doc/vendor_server_terminal.png)
+![Vendor Client Terminal](images/vendor_server_terminal.png)
 <p align="center">
     Figure 5. Server Serial Terminal
 </p>

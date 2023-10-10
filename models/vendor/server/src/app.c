@@ -1,9 +1,9 @@
 /***************************************************************************//**
  * @file app.c
- * @brief Core application logic for the vendor client node.
+ * @brief Core application logic for the vendor server node.
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -41,11 +41,11 @@
 
 #include "sl_btmesh_api.h"
 #include "sl_bt_api.h"
-#include "sl_simple_timer.h"
+#include "app_timer.h"
+#include "sl_sensor_rht.h"
 
 #include "em_cmu.h"
 #include "em_gpio.h"
-#include "em_rtcc.h"
 
 #include "my_model_def.h"
 
@@ -68,9 +68,7 @@
 #endif // #ifdef PROV_LOCALLY
 
 #define EX_B0_PRESS                                 ((1) << 5)
-#define EX_B0_LONG_PRESS                            ((1) << 6)
-#define EX_B1_PRESS                                 ((1) << 7)
-#define EX_B1_LONG_PRESS                            ((1) << 8)
+#define EX_B1_PRESS                                 ((1) << 6)
 
 // Timing
 // Check section 4.2.2.2 of Mesh Profile Specification 1.0 for format
@@ -81,45 +79,30 @@
 
 #define STEP_RES_BIT_MASK                           0xC0
 
-// Max x is 63
-#define SET_100_MILLI(x)                            (uint8_t)(STEP_RES_100_MILLI | ((x) & (0x3F)))
-#define SET_1_SEC(x)                                (uint8_t)(STEP_RES_1_SEC | ((x) & (0x3F)))
-#define SET_10_SEC(x)                               (uint8_t)(STEP_RES_10_SEC | ((x) & (0x3F)))
-#define SET_10_MIN(x)                               (uint8_t)(STEP_RES_10_MIN | ((x) & (0x3F)))
-
-// Advertising Provisioning Bearer
+/// Advertising Provisioning Bearer
 #define PB_ADV                                      0x1
-// GATT Provisioning Bearer
+/// GATT Provisioning Bearer
 #define PB_GATT                                     0x2
 
 // Used button indexes
 #define BUTTON_PRESS_BUTTON_0                       0
 #define BUTTON_PRESS_BUTTON_1                       1
 
-uint8_t conn_handle = 0xFF;
-
-static uint32_t periodic_timer_ms = 0;
-static uint8_t update_interval = 0;
-static unit_t unit = celsius;
-
-static uint8_t period_idx = 0;
-static uint8_t periods[] = {
-  SET_100_MILLI(3),        /* 300ms */
-  0,
-  SET_100_MILLI(20),       /* 2s    */
-  0,
-  SET_1_SEC(10),           /* 10s   */
-  0,
-  SET_10_SEC(12),          /* 2min  */
-  0,
-  SET_10_MIN(1),           /* 10min */
+static uint8_t temperature[TEMP_DATA_LENGTH] = {0, 0, 0, 0};
+static unit_t unit[UNIT_DATA_LENGTH] = {
+  celsius
+};
+// Check section 4.2.2.2 of Mesh Profile Specification 1.0 for format
+static uint8_t update_interval[UPDATE_INTERVAL_LENGTH] = {
   0
 };
 
-my_model_t my_model = {
+static uint32_t periodic_timer_ms = 0;
+
+static my_model_t my_model = {
   .elem_index = PRIMARY_ELEMENT,
   .vendor_id = MY_VENDOR_ID,
-  .model_id = MY_MODEL_CLIENT_ID,
+  .model_id = MY_MODEL_SERVER_ID,
   .publish = 1,
   .opcodes_len = NUMBER_OF_OPCODES,
   .opcodes_data[0] = temperature_get,
@@ -134,17 +117,20 @@ my_model_t my_model = {
   .opcodes_data[9] = update_interval_status
 };
 
+
+/// Local provisioning
 #ifdef PROV_LOCALLY
 static uint16_t uni_addr = 0;
 
 static aes_key_128 enc_key = {
   .data = "\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03\x03"
 };
-#endif
+#endif /* #ifdef PROV_LOCALLY */
 
 static void factory_reset(void);
+static void read_temperature(void);
+static void setup_periodcal_update(uint8_t interval);
 static void delay_reset_ms(uint32_t ms);
-static void parse_period(uint8_t interval);
 
 /**************************************************************************//**
  * Application Init.
@@ -152,7 +138,7 @@ static void parse_period(uint8_t interval);
 SL_WEAK void app_init(void)
 {
   app_log("=================\r\n");
-  app_log("Client Device\r\n");
+  app_log("Server Device\r\n");
   app_button_press_enable();
 }
 
@@ -194,60 +180,44 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
     // -------------------------------
     // Handle Button Presses
     case sl_bt_evt_system_external_signal_id: {
-      uint8_t opcode = 0, length = 0, data = 0;
+      uint8_t opcode = 0, length = 0, *data = NULL;
+      // check if external signal triggered by button 0 press
       if(evt->data.evt_system_external_signal.extsignals & EX_B0_PRESS) {
-          opcode = temperature_get;
-          app_log("PB0 Pressed.\r\n");
+          read_temperature();
+          opcode = temperature_status;
+          length = TEMP_DATA_LENGTH;
+          data = temperature;
+          app_log("B0 Pressed.\r\n");
       }
-      if(evt->data.evt_system_external_signal.extsignals & EX_B0_LONG_PRESS) {
-          opcode = update_interval_set_unack;
-          length = 1;
-          data = periods[period_idx];
-          if(period_idx == sizeof(periods) - 1) {
-              period_idx = 0;
-          } else {
-              period_idx++;
-          }
-          app_log("B0 Long Pressed.\r\n");
-      }
+      // check if external signal triggered by button 1 press
       if(evt->data.evt_system_external_signal.extsignals & EX_B1_PRESS) {
-          opcode = unit_get;
-          app_log("PB1 Pressed.\r\n");
+          opcode = unit_status;
+          length = UNIT_DATA_LENGTH;
+          data = unit;
+          app_log("B1 Pressed.\r\n");
       }
-      if(evt->data.evt_system_external_signal.extsignals & EX_B1_LONG_PRESS) {
-          if (unit == celsius) {
-              opcode = unit_set_unack;
-              length = 1;
-              data = fahrenheit;
-          } else {
-            opcode = unit_set;
-            length = 1;
-            data = celsius;
-          }
-          app_log("B1 Long Pressed.\r\n");
-      }
+      // set the vendor model publication message
       sc = sl_btmesh_vendor_model_set_publication(my_model.elem_index,
                                                   my_model.vendor_id,
                                                   my_model.model_id,
                                                   opcode,
-                                                  1,
-                                                  length,
-                                                  &data);
+                                                  1, length, data);
       if(sc != SL_STATUS_OK) {
-        app_log("Set publication error: 0x%04X\r\n", sc);
+          app_log("Set publication error: 0x%04lX\r\n", sc);
       } else {
-        app_log("Set publication done. Publishing...\r\n");
-        sc = sl_btmesh_vendor_model_publish(my_model.elem_index,
-                                            my_model.vendor_id,
-                                            my_model.model_id);
-        if (sc != SL_STATUS_OK) {
-          app_log("Publish error = 0x%04X\r\n", sc);
-        } else {
-          app_log("Publish done.\r\n");
-        }
+          app_log("Set publication done. Publishing...\r\n");
+          // publish the vendor model publication message
+          sc = sl_btmesh_vendor_model_publish(my_model.elem_index,
+                                              my_model.vendor_id,
+                                              my_model.model_id);
+          if(sc != SL_STATUS_OK) {
+              app_log("Publish error: 0x%04lX\r\n", sc);
+          } else {
+              app_log("Publish done.\r\n");
+          }
       }
+      break;
     }
-    break;
 
     // -------------------------------
     // Default event handler.
@@ -323,10 +293,10 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
                                               &period,
                                               &retrans,
                                               &credentials);
-      if (!sc && pub_address == CUSTOM_CTRL_GRP_ADDR) {
+      if (!sc && pub_address == CUSTOM_STATUS_GRP_ADDR) {
         app_log("Configuration done already.\r\n");
       } else {
-        app_log("Pub setting result = 0x%04X, pub setting address = 0x%04X\r\n", sc, pub_address);
+        app_log("Pub setting result = 0x%04lX, pub setting address = 0x%04X\r\n", sc, pub_address);
         app_log("Add local app key ...\r\n");
         sc = sl_btmesh_test_add_local_key(1,
                                           enc_key,
@@ -346,7 +316,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
                                                 APP_KEY_IDX,
                                                 my_model.vendor_id,
                                                 my_model.model_id,
-                                                CUSTOM_CTRL_GRP_ADDR,
+                                                CUSTOM_STATUS_GRP_ADDR,
                                                 DEFAULT_TTL,
                                                 0, 0, 0);
         app_assert_status_f(sc, "Failed to set local model pub\r\n");
@@ -355,7 +325,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         sc = sl_btmesh_test_add_local_model_sub(my_model.elem_index,
                                                 my_model.vendor_id,
                                                 my_model.model_id,
-                                                CUSTOM_STATUS_GRP_ADDR);
+                                                CUSTOM_CTRL_GRP_ADDR);
         app_assert_status_f(sc, "Failed to add local model sub\r\n");
 
         app_log("Set relay ...\r\n");
@@ -386,7 +356,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
     case sl_btmesh_evt_node_key_added_id:
       app_log("got new %s key with index %x\r\n",
-              evt->data.evt_node_key_added.type == 0 ? "network " : "application ",
+              evt->data.evt_node_key_added.type == 0 ? "network" : "application",
               evt->data.evt_node_key_added.index);
       break;
 
@@ -405,8 +375,8 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
     // -------------------------------
     // Handle vendor model messages
     case sl_btmesh_evt_vendor_model_receive_id: {
-      int32_t temperature = 0;
       sl_btmesh_evt_vendor_model_receive_t *rx_evt = (sl_btmesh_evt_vendor_model_receive_t *)&evt->data;
+      uint8_t action_req = 0, opcode = 0, payload_len = 0, *payload_data = NULL;
       app_log("Vendor model data received.\r\n\t"
               "Element index = %d\r\n\t"
               "Vendor id = 0x%04X\r\n\t"
@@ -434,27 +404,128 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       }
       app_log("\r\n");
 
+
       switch (rx_evt->opcode) {
-        case temperature_status:
-          temperature = *(uint32_t *) rx_evt->payload.data;
-          app_log("Temperature = %d.%d %s\r\n",
-                  temperature / 1000,
-                  temperature % 1000,
-                  unit == celsius ? (char * )"Celsius" : (char * )"Fahrenheit");
+        // Server
+        case temperature_get:
+          app_log("Sending/publishing temperature status as response to "
+                  "temperature get from client...\r\n");
+          read_temperature();
+          action_req = ACK_REQ;
+          opcode = temperature_status;
+          payload_len = TEMP_DATA_LENGTH;
+          payload_data = temperature;
           break;
-        case unit_status:
-          unit = (unit_t) rx_evt->payload.data[0];
-          app_log("Unit = %s\r\n",
-                  unit == celsius ? (char * )"Celsius" : (char * )"Fahrenheit");
+        // Server
+        case unit_get:
+          app_log("Sending/publishing unit status as response to unit get from "
+                  "client...\r\n");
+          action_req = ACK_REQ;
+          opcode = unit_status;
+          payload_len = UNIT_DATA_LENGTH;
+          payload_data = (uint8_t *) unit;
           break;
-        case update_interval_status:
-          update_interval = rx_evt->payload.data[0];
-          app_log("Period received = %d\r\n", update_interval);
-          parse_period(update_interval);
+        // Server
+        case unit_set:
+          app_log("Sending/publishing unit status as response to unit set from "
+                  "client...\r\n");
+          memcpy(unit, rx_evt->payload.data, rx_evt->payload.len);
+          action_req = ACK_REQ | STATUS_UPDATE_REQ;
+          opcode = unit_status;
+          payload_len = UNIT_DATA_LENGTH;
+          payload_data = (uint8_t *) unit;
+          break;
+        // Server
+        case unit_set_unack:
+          app_log("Publishing unit status as response to unit set unacknowledged "
+                  "from client...\r\n");
+          memcpy(unit, rx_evt->payload.data, rx_evt->payload.len);
+          action_req = STATUS_UPDATE_REQ;
+          opcode = unit_status;
+          payload_len = UNIT_DATA_LENGTH;
+          payload_data = (uint8_t *) unit;
           break;
 
+        case update_interval_get:
+          app_log("Publishing Update Interval status as response to Update "
+                  "interval get from client...\r\n");
+          action_req = ACK_REQ;
+          opcode = update_interval_status;
+          payload_len = UPDATE_INTERVAL_LENGTH;
+          payload_data = update_interval;
+          break;
+        case update_interval_set:
+          app_log("Publishing Update Interval status as response to "
+                  "update_interval_set from client...\r\n");
+          memcpy(update_interval,
+                 rx_evt->payload.data,
+                 rx_evt->payload.len);
+          action_req = ACK_REQ | STATUS_UPDATE_REQ;
+          opcode = update_interval_status;
+          payload_len = UPDATE_INTERVAL_LENGTH;
+          payload_data = update_interval;
+          setup_periodcal_update(update_interval[0]);
+          break;
+        case update_interval_set_unack:
+          app_log("Publishing Update Interval status as response to "
+                  "update_interval_set_unack from client...\r\n");
+          memcpy(update_interval,
+                 rx_evt->payload.data,
+                 rx_evt->payload.len);
+          action_req = STATUS_UPDATE_REQ;
+          opcode = update_interval_status;
+          payload_len = UPDATE_INTERVAL_LENGTH;
+          payload_data = update_interval;
+          setup_periodcal_update(update_interval[0]);
+          break;
+
+        // Add more cases here if more opcodes are defined
         default:
           break;
+      }
+
+      if(action_req & ACK_REQ) {
+          sc = sl_btmesh_vendor_model_send(rx_evt->source_address,
+                                           rx_evt->va_index,
+                                           rx_evt->appkey_index,
+                                           my_model.elem_index,
+                                           my_model.vendor_id,
+                                           my_model.model_id,
+                                           rx_evt->nonrelayed,
+                                           opcode,
+                                           1,
+                                           payload_len,
+                                           payload_data);
+          // Errors that are returned from this function are usually due to low
+          // memory. Low memory is non-critical and we can try sending again later.
+          if(sc != SL_STATUS_OK) {
+              app_log("Vendor model send error: 0x%04lX\r\n", sc);
+          } else {
+              app_log("Acknowledge sent.\r\n");
+          }
+      }
+      if(action_req & STATUS_UPDATE_REQ) {
+          app_log("Publishing status update.\r\n");
+          sc = sl_btmesh_vendor_model_set_publication(my_model.elem_index,
+                                                      my_model.vendor_id,
+                                                      my_model.model_id,
+                                                      opcode,
+                                                      1,
+                                                      payload_len,
+                                                      payload_data);
+          if(sc != SL_STATUS_OK) {
+              app_log("Set publication error: 0x%04lX\r\n", sc);
+          } else {
+              app_log("Set publication done. Publishing ...\r\n");
+              sc = sl_btmesh_vendor_model_publish(my_model.elem_index,
+                                                  my_model.vendor_id,
+                                                  my_model.model_id);
+              if(sc != SL_STATUS_OK) {
+                  app_log("Publish error: 0x%04lX\r\n", sc);
+              } else {
+                  app_log("Publish done.\r\n");
+              }
+          }
       }
       break;
     }
@@ -474,25 +545,39 @@ void app_button_press_cb(uint8_t button, uint8_t duration)
       // Handling of button press less than 0.25s
     case APP_BUTTON_PRESS_DURATION_MEDIUM:
       // Handling of button press greater than 0.25s and less than 1s
+    case APP_BUTTON_PRESS_DURATION_LONG:
+      // Handling of button press greater than 1s and less than 5s
+    case APP_BUTTON_PRESS_DURATION_VERYLONG:
       if (button == BUTTON_PRESS_BUTTON_0) {
         sl_bt_external_signal(EX_B0_PRESS);
       } else {
         sl_bt_external_signal(EX_B1_PRESS);
       }
       break;
-    case APP_BUTTON_PRESS_DURATION_LONG:
-      // Handling of button press greater than 1s and less than 5s
-    case APP_BUTTON_PRESS_DURATION_VERYLONG:
-      if (button == BUTTON_PRESS_BUTTON_0) {
-        sl_bt_external_signal(EX_B0_LONG_PRESS);
-      } else {
-        sl_bt_external_signal(EX_B1_LONG_PRESS);
-      }
-      break;
     default:
       break;
   }
 }
+
+/// Temperature
+static void read_temperature(void)
+{
+  uint32_t rel_hum;
+  float temp;
+  if(sl_sensor_rht_get(&rel_hum, (int32_t *)temperature) != SL_STATUS_OK) {
+    app_log("Error while reading temperature sensor. Clear the buffer.\r\n");
+    memset(temperature, 0, sizeof(temperature));
+  }
+
+//  app_log("%d\r\n", (int)*temperature);
+
+  if (unit[0] == fahrenheit) {
+    temp = (float) (*(int32_t *) temperature / 1000);
+    temp = temp * 1.8 + 32;
+    *(int32_t *) temperature = (int32_t) (temp * 1000);
+  }
+}
+
 
 /// Reset
 static void factory_reset(void)
@@ -502,28 +587,58 @@ static void factory_reset(void)
   delay_reset_ms(100);
 }
 
-static void app_reset_timer_cb(sl_simple_timer_t *handle, void *data)
+static void app_reset_timer_cb(app_timer_t *handle, void *data)
 {
   (void)handle;
   (void)data;
   sl_bt_system_reset(0);
 }
 
-static sl_simple_timer_t app_reset_timer;
+static app_timer_t app_reset_timer;
 static void delay_reset_ms(uint32_t ms)
 {
   if(ms < 10) {
       ms = 10;
   }
-  sl_simple_timer_start(&app_reset_timer,
-                         ms,
-                         app_reset_timer_cb,
-                         NULL,
-                         false);
+  app_timer_start(&app_reset_timer,
+                  ms,
+                  app_reset_timer_cb,
+                  NULL,
+                  false);
+
 }
 
-
 /// Update Interval
+static void periodic_update_timer_cb(app_timer_t *handle, void *data)
+{
+  (void)handle;
+  (void)data;
+  sl_status_t sc;
+
+  app_log("New temperature update\r\n");
+  read_temperature();
+  sc = sl_btmesh_vendor_model_set_publication(my_model.elem_index,
+                                              my_model.vendor_id,
+                                              my_model.model_id,
+                                              temperature_status,
+                                              1,
+                                              TEMP_DATA_LENGTH,
+                                              temperature);
+  if(sc != SL_STATUS_OK) {
+    app_log("Set publication error: 0x%04lX\r\n", sc);
+  } else {
+    app_log("Set publication done. Publishing...\r\n");
+    sc = sl_btmesh_vendor_model_publish(my_model.elem_index,
+                                        my_model.vendor_id,
+                                        my_model.model_id);
+    if (sc != SL_STATUS_OK) {
+      app_log("Publish error: 0x%04lX\r\n", sc);
+    } else {
+      app_log("Publish done.\r\n");
+    }
+  }
+}
+
 static void parse_period(uint8_t interval)
 {
   switch (interval & STEP_RES_BIT_MASK) {
@@ -543,13 +658,15 @@ static void parse_period(uint8_t interval)
     default:
       break;
   }
-  if (periodic_timer_ms) {
-      app_log("Update period [hh:mm:ss:ms]= %02d:%02d:%02d:%04d\r\n",
-              (periodic_timer_ms / (1000 * 60 * 60)),
-              (periodic_timer_ms % (1000 * 60 * 60)) / (1000 * 60),
-              (periodic_timer_ms % (1000 * 60)) / 1000,
-              ((periodic_timer_ms % (1000)) / 1000) * 100);
-  } else {
-      app_log("Periodic update off.\r\n");
-  }
+}
+
+static app_timer_t periodic_update_timer;
+static void setup_periodcal_update(uint8_t interval)
+{
+  parse_period(interval);
+  app_timer_start(&periodic_update_timer,
+                  periodic_timer_ms,
+                  periodic_update_timer_cb,
+                  NULL,
+                  true);
 }
