@@ -38,8 +38,8 @@
 #include "sl_btmesh_generic_model_capi_types.h"
 #include "sl_btmesh_lib.h"
 
+#include "app_timer.h"
 #include "app_assert.h"
-#include "sl_simple_timer.h"
 #include "sl_btmesh_lighting_client.h"
 
 #ifdef SL_COMPONENT_CATALOG_PRESENT
@@ -79,10 +79,10 @@
 #define UINT16_TO_DEGREE(level) ((((uint32_t)(level) * 360) + 32767) / 65535)
 
 /// periodic timer handle
-static sl_simple_timer_t hsl_retransmission_timer;
+static app_timer_t hsl_retransmission_timer;
 
 /// periodic timer callback
-static void hsl_retransmission_timer_cb(sl_simple_timer_t *handle,
+static void hsl_retransmission_timer_cb(app_timer_t *handle,
                                         void *data);
 
 /// hue possible values from 0 to 65535, which are mapped to 0° to 360°
@@ -189,9 +189,9 @@ void sl_btmesh_set_hsl(uint8_t new_hsl)
   target_lightness = (double)hsl_table[new_hsl][2]/100*65535;
 
   app_log("BT mesh HSL set light to  %s\r\n", color[new_hsl]);
-  app_log("Hue:      %4udeg\r\n", UINT16_TO_DEGREE(target_hue));
-  app_log("Saturation: %4u%%\r\n", UINT16_TO_PERCENTAGE(target_saturation));
-  app_log("Lightness:     %5u%%\r\n", UINT16_TO_PERCENTAGE(target_lightness));
+  app_log("Hue:      %4ludeg\r\n", UINT16_TO_DEGREE(target_hue));
+  app_log("Saturation: %4lu%%\r\n", UINT16_TO_PERCENTAGE(target_saturation));
+  app_log("Lightness:     %5lu%%\r\n", UINT16_TO_PERCENTAGE(target_lightness));
 
   //printf(HSL_CLIENT_LOGGING_NEW_TEMP_SET, target_hue, target_saturation, target_lightness);
 
@@ -203,11 +203,11 @@ void sl_btmesh_set_hsl(uint8_t new_hsl)
   // If there are more requests to send, start a repeating soft timer
   // to trigger retransmission of the request after 50 ms delay
   if (hsl_request_count > 0) {
-    sl_status_t sc = sl_simple_timer_start(&hsl_retransmission_timer,
-                                           HSL_CLIENT_RETRANSMISSION_TIMEOUT,
-                                           hsl_retransmission_timer_cb,
-                                           NO_CALLBACK_DATA,
-                                           true);
+    sl_status_t sc = app_timer_start(&hsl_retransmission_timer,
+                                     HSL_CLIENT_RETRANSMISSION_TIMEOUT,
+                                     hsl_retransmission_timer_cb,
+                                     NO_CALLBACK_DATA,
+                                     true);
     app_assert_status_f(sc, "Failed to start periodic timer\n");
   }
 }
@@ -217,7 +217,7 @@ void sl_btmesh_set_hsl(uint8_t new_hsl)
  * @param[in] handle pointer to handle instance
  * @param[in] data pointer to input data
  ******************************************************************************/
-static void  hsl_retransmission_timer_cb(sl_simple_timer_t *handle,
+static void  hsl_retransmission_timer_cb(app_timer_t *handle,
                                          void *data)
 {
   (void)data;
@@ -226,7 +226,7 @@ static void  hsl_retransmission_timer_cb(sl_simple_timer_t *handle,
   send_hsl_request(1);   // Retransmit hsl message
   // Stop retransmission timer if it was the last attempt
   if (hsl_request_count == 0) {
-    sl_status_t sc = sl_simple_timer_stop(&hsl_retransmission_timer);
+    sl_status_t sc = app_timer_stop(&hsl_retransmission_timer);
     app_assert_status_f(sc, "Failed to stop periodic timer\n");
   }
 }
