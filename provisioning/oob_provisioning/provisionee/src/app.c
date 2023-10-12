@@ -48,6 +48,8 @@
 
 #include "app_assert.h"
 
+#include "btmesh_change.h"
+
 /* Buttons and LEDs headers */
 #include "app_button_press.h"
 #include "sl_simple_button.h"
@@ -68,7 +70,7 @@
 #endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 
 /* Switch app headers */
-#include "sl_simple_timer.h"
+#include "app_timer.h"
 #include "sl_btmesh_factory_reset.h"
 #include "sl_btmesh_lighting_client.h"
 #include "sl_btmesh_ctl_client.h"
@@ -111,10 +113,10 @@
 #endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 
 /// periodic timer handle
-static sl_simple_timer_t app_oob_counter_timer;
+static app_timer_t app_oob_counter_timer;
 
 /// periodic timer callback
-static void app_oob_counter_timer_cb(sl_simple_timer_t *handle, void *data);
+static void app_oob_counter_timer_cb(app_timer_t *handle, void *data);
 // Handling of boot event
 static void handle_boot_event(void);
 // Handling of le connection events
@@ -280,7 +282,7 @@ static void handle_boot_event(void)
     if (sc) {
       snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
       lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%x)\r\n", sc);
+      app_log("Initialization failed (0x%lx)\r\n", sc);
     } else {
       sc = sl_btmesh_node_get_uuid(&uuid);
       app_assert_status_f(sc, "Failed to get UUID\n");
@@ -352,15 +354,15 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
  ******************************************************************************/
 void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 {
-  sl_status_t sc;
+  //sl_status_t sc;
 
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_btmesh_evt_node_initialized_id:
       if (!(evt->data.evt_node_initialized.provisioned)) {
         // Enable ADV and GATT provisioning bearer
-        sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
+        //sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
 
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
+        //app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
       }
       break;
     case sl_btmesh_evt_node_static_oob_request_id:
@@ -452,11 +454,11 @@ void app_button_press_cb(uint8_t button, uint8_t duration)
 // Called when the Provisioning starts
 void sl_btmesh_on_node_provisioning_started(uint16_t result)
 {
-  sl_status_t sc = sl_simple_timer_start(&app_oob_counter_timer,
-                                         APP_OOB_COUNTER_TIMEOUT,
-                                         app_oob_counter_timer_cb,
-                                         NO_CALLBACK_DATA,
-                                         true);
+  sl_status_t sc = app_timer_start(&app_oob_counter_timer,
+                                   APP_OOB_COUNTER_TIMEOUT,
+                                   app_oob_counter_timer_cb,
+                                   NO_CALLBACK_DATA,
+                                   true);
 
   app_assert_status_f(sc, "Failed to start periodic timer\n");
 
@@ -473,7 +475,7 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
 void sl_btmesh_on_node_provisioned(uint16_t address,
                                    uint32_t iv_index)
 {
-  sl_status_t sc = sl_simple_timer_stop(&app_oob_counter_timer);
+  sl_status_t sc = app_timer_stop(&app_oob_counter_timer);
   app_assert_status_f(sc, "Failed to stop periodic timer\n");
 
   provisioning_in_progress = false;
@@ -489,7 +491,7 @@ void sl_btmesh_on_node_provisioned(uint16_t address,
 /***************************************************************************//**
  * Timer Callbacks
  ******************************************************************************/
-static void app_oob_counter_timer_cb(sl_simple_timer_t *handle, void *data)
+static void app_oob_counter_timer_cb(app_timer_t *handle, void *data)
 {
   sl_status_t sc;
 
@@ -497,8 +499,8 @@ static void app_oob_counter_timer_cb(sl_simple_timer_t *handle, void *data)
   (void)handle;
   app_log("Button presses: %d\n", oob_counter);
 
-  static uint8array out_of_band_authentication_input_hazard_data = {16, {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
-  out_of_band_authentication_input_hazard_data.data[15] = oob_counter;
+  static uint8array out_of_band_authentication_input_hazard_data = {32, {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
+  out_of_band_authentication_input_hazard_data.data[31] = oob_counter;
   sc = sl_btmesh_node_send_input_oob_request_response(out_of_band_authentication_input_hazard_data.len,
                                                       out_of_band_authentication_input_hazard_data.data);
 

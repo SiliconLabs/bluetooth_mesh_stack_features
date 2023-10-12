@@ -12,7 +12,7 @@ This example is aimed to demonstrate our Mesh library's capabilities in building
 
 ## Gecko SDK version ##
 
-GSDK v4.1.1
+GSDK v4.3.1
 
 ---
 
@@ -44,14 +44,14 @@ This project README assumes that the reader is familiar with the usage of Silico
   - Copy the following file into the root directory of your project, overwriting the already existing one:
     - app.c
   - When everything is configured, build and flash the projects
-  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network.
+  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by long pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network.
   - After the provisioning started, you have 5 seconds (adjustable with the ```APP_OOB_COUNTER_TIMEOUT```) to enter the OOB ```AuthValue``` into the Provisionee node with the ```Button 1``` pushbutton.
 
-  <img src="images/oob_authvalue.png">
-  <img src="images/oob_input.png">
+  ![oob_authvalue](images/oob_authvalue.png)
+  ![oob_input](images/oob_input.png)
 
   - If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node.
 
-  <img src="images/dcd_infos.png">
+  ![dcd_infos](images/dcd_infos.png)
 
 ---
