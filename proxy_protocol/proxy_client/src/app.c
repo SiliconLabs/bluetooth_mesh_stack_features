@@ -41,7 +41,7 @@
 
 #include "gatt_db.h"
 
-#include "sl_simple_timer.h"
+#include "app_timer.h"
 
 /* Buttons and LEDs headers */
 #include "sl_simple_button_instances.h"
@@ -130,20 +130,20 @@ static const bd_addr target_server_node_bd_addr = {{0xa1, 0x92, 0xc5, 0xf9, 0xe3
  ******************************************************************************/
 #define TIMER_ID_RESTART               78
 
-sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_proxy_conn_1;
-sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_proxy_conn_2;
-sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_turn_off_adv_bearer_1;
-sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_turn_off_adv_bearer_2;
-sl_sleeptimer_timer_handle_t sleep_timer_handle_delay_turn_off_adv_bearer_3;
-sl_sleeptimer_timer_handle_t sleep_timer_restart_1;
+app_timer_t app_timer_handle_delay_proxy_conn_1;
+app_timer_t app_timer_handle_delay_proxy_conn_2;
+app_timer_t app_timer_handle_delay_turn_off_adv_bearer_1;
+app_timer_t app_timer_handle_delay_turn_off_adv_bearer_2;
+app_timer_t app_timer_handle_delay_turn_off_adv_bearer_3;
+app_timer_t app_timer_restart_1;
 
-void sleeptimer_callback(sl_sleeptimer_timer_handle_t *handle, void *data);
+static void app_timer_callback(app_timer_t *handle, void *data);
 
 // periodic timer handle
-static sl_simple_timer_t app_led_blinking_timer;
+static app_timer_t app_led_blinking_timer;
 
 // periodic timer callback
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data);
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data);
 
 
 
@@ -152,8 +152,6 @@ static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data);
  ******************************************************************************/
 
 static uint32_t proxy_handle = 0xFFFF;
-/// Flag for indicating DFU Reset must be performed
-static uint8_t boot_to_dfu = 0;
 /// Address of the Primary Element of the Node
 static uint16_t my_address = 0;
 /// Handle of the last opened LE connection
@@ -174,7 +172,7 @@ SL_WEAK void app_init(void)
   // Put your additional application init code here!                         //
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
-  app_log("BT mesh Light initialized\r\n");
+  app_log("BT Mesh Proxy Client initialized\r\n");
   app_led_init();
 }
 
@@ -213,7 +211,7 @@ static void set_device_name(uuid_128 *uuid)
                                                    strlen(name),
                                                    (uint8_t *)name);
   if (result) {
-    app_log("sl_bt_gatt_server_write_attribute_value failed, code %x\r\n",
+    app_log("sl_bt_gatt_server_write_attribute_value failed, code %lx\r\n",
             result);
   }
   // Show device name on the LCD
@@ -255,21 +253,12 @@ bool handle_reset_conditions(void)
 static void handle_boot_event(void)
 {
   sl_status_t sc;
-  char buf[BOOT_ERR_MSG_BUF_LEN];
   uuid_128 uuid;
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    sc = sl_btmesh_node_init();
-    if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
-      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%x)\r\n", sc);
-    } else {
-      sc = sl_btmesh_node_get_uuid(&uuid);
-      app_assert_status_f(sc, "Failed to get UUID\r\n");
-      set_device_name(&uuid);
-    }
+    sc = sl_btmesh_node_get_uuid(&uuid);
+    app_assert_status_f(sc, "Failed to get UUID\r\n");
+    set_device_name(&uuid);
   }
 }
 
@@ -322,8 +311,8 @@ static void on_adv_scanned(sl_bt_evt_scanner_scan_report_t *e)
     app_log_info("Matched, connecting...\r\n");
   }
 
-  app_log_debug("Network ID: \n\t");
-  UINT8_ARRAY_DUMP(e->data.data, e->data.len);
+  //app_log_debug("Network ID: \n\t");
+  //UINT8_ARRAY_DUMP(e->data.data, e->data.len);
 }
 
 static void initiate_proxy_connection(uint32_t delay_ticks)
@@ -343,13 +332,11 @@ static void initiate_proxy_connection(uint32_t delay_ticks)
       app_log_info("Proxy handle = %ld\r\n", proxy_handle);
     }
   } else {
-    sl_sleeptimer_start_timer(
-      &sleep_timer_handle_delay_proxy_conn_1,
-      delay_ticks,
-      sleeptimer_callback,
-      (void*)TIMER_ID_DELAY_PROXY_CONN,
-      0,
-      0);
+    app_timer_start(&app_timer_handle_delay_proxy_conn_1,
+                    delay_ticks,
+                    app_timer_callback,
+                    (void*)TIMER_ID_DELAY_PROXY_CONN,
+                    false);
   }
 }
 
@@ -462,7 +449,7 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
     case sl_bt_evt_connection_opened_id:
       app_log("evt:sl_bt_evt_connection_opened_id\r\n");
       num_connections++;
-      app_log_info("conn_handle = %ld\r\n", conn_handle);
+      app_log_info("conn_handle = %d\r\n", conn_handle);
       conn_handle = evt->data.evt_connection_opened.connection;
       lcd_print("connected", SL_BTMESH_WSTK_LCD_ROW_CONNECTION_CFG_VAL);
       initiate_proxy_connection(DELAY_PROXY_CONN_IN_TICKS);
@@ -472,41 +459,19 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
       app_log("evt:sl_bt_evt_connection_parameters_id\r\n");
       break;
 
-    case sl_bt_evt_gatt_server_user_write_request_id:
-      if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_ota_control) {
-        /* Set flag to enter to OTA mode */
-        boot_to_dfu = 1;
-        /* Send response to Write Request */
-        sl_bt_gatt_server_send_user_write_response(
-          evt->data.evt_gatt_server_user_write_request.connection,
-          gattdb_ota_control,
-          0);
-
-        /* Close connection to enter to DFU OTA mode */
-        sl_bt_connection_close(evt->data.evt_gatt_server_user_write_request.connection);
-      }
-      break;
-
     case sl_bt_evt_connection_closed_id:
      {
        handle_le_connection_events(evt);
-       /* Check if need to boot to dfu mode */
-       if (boot_to_dfu) {
-         /* Enter to DFU OTA mode */
-         sl_bt_system_reset(2);
-       }
 
        app_log_warning("evt:sl_bt_evt_connection_closed_id, reason 0x%x\r\n",
                        evt->data.evt_connection_closed.reason);
 
        conn_handle = 0xFF;
-       sl_sleeptimer_start_timer(
-         &sleep_timer_handle_delay_proxy_conn_2,
-         0,
-         sleeptimer_callback,
-         (void*)TIMER_ID_DELAY_PROXY_CONN,
-         0,
-         0);
+       app_timer_start(&app_timer_handle_delay_proxy_conn_2,
+                       0,
+                       app_timer_callback,
+                       (void*)TIMER_ID_DELAY_PROXY_CONN,
+                       false);
 
        if (num_connections > 0) {
          if (--num_connections == 0) {
@@ -560,7 +525,7 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
        break;
 
      default:
-       app_log("Unhandled evt:%x\r\n", SL_BT_MSG_ID(evt->header));
+       app_log("Unhandled evt:%lx\r\n", SL_BT_MSG_ID(evt->header));
        break;
   }
 }
@@ -573,18 +538,8 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
  ******************************************************************************/
 void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 {
-  sl_status_t sc;
-
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_btmesh_evt_node_initialized_id:
-
-      if (!(evt->data.evt_node_initialized.provisioned)) {
-        // Enable ADV and GATT provisioning bearer
-        sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
-
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\r\n");
-      }
-
       app_log_debug("Node initialized\r\n");
 
       // Initialize generic server models
@@ -598,13 +553,11 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         my_address = evt->data.evt_node_initialized.address;
         init_done = true;
 
-        sl_sleeptimer_start_timer(
-          &sleep_timer_handle_delay_turn_off_adv_bearer_1,
-          DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
-          sleeptimer_callback,
-          (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
-          0,
-          0);
+        app_timer_start(&app_timer_handle_delay_turn_off_adv_bearer_1,
+                        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
+                        app_timer_callback,
+                        (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
+                        false);
       } else {
         app_log_debug("Starting unprovisioned beaconing...\r\n");
         sl_btmesh_node_start_unprov_beaconing(0x3);   // enable ADV and GATT provisioning bearer
@@ -618,24 +571,21 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
     case sl_btmesh_evt_node_provisioned_id:
       init_done = true;
 
-      sl_sleeptimer_start_timer(
-        &sleep_timer_handle_delay_turn_off_adv_bearer_2,
-        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
-        sleeptimer_callback,
-        (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
-        0,
-        0);
+      app_timer_start(&app_timer_handle_delay_turn_off_adv_bearer_2,
+                      DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
+                      app_timer_callback,
+                      (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
+                      false);
+      break;
       break;
 
     case sl_btmesh_evt_node_provisioning_failed_id:
       /* Start a one-shot timer that will trigger soft reset after small delay */
-      sl_sleeptimer_start_timer(
-        &sleep_timer_restart_1,
-        2 * 32768,
-        sleeptimer_callback,
-        (void*)TIMER_ID_RESTART,
-        0,
-        0);
+      app_timer_start(&app_timer_restart_1,
+                      2 * 32768,
+                      app_timer_callback,
+                      (void*)TIMER_ID_RESTART,
+                      false);
       break;
 
     case sl_btmesh_evt_node_key_added_id:
@@ -647,13 +597,11 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
     case sl_btmesh_evt_node_model_config_changed_id:
       app_log_debug("Model config changed\r\n");
 
-      sl_sleeptimer_start_timer(
-        &sleep_timer_handle_delay_turn_off_adv_bearer_3,
-        DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
-        sleeptimer_callback,
-        (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
-        0,
-        0);
+      app_timer_start(&app_timer_handle_delay_turn_off_adv_bearer_3,
+                      DELAY_TURN_OFF_ADV_BEARER_IN_TICKS,
+                      app_timer_callback,
+                      (void*)TIMER_ID_DELAY_TURN_OFF_ADV_BEARER,
+                      false);
       break;
 
     case sl_btmesh_evt_generic_server_client_request_id:
@@ -717,12 +665,11 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
   // Change buttons to LEDs in case of shared pin
   app_led_change_buttons_to_leds();
 
-  sl_status_t sc = sl_simple_timer_start(
-    &app_led_blinking_timer,
-    APP_LED_BLINKING_TIMEOUT,
-    app_led_blinking_timer_cb,
-    NO_CALLBACK_DATA,
-    true);
+  sl_status_t sc = app_timer_start(&app_led_blinking_timer,
+                                   APP_LED_BLINKING_TIMEOUT,
+                                   app_led_blinking_timer_cb,
+                                   NO_CALLBACK_DATA,
+                                   true);
 
   app_assert_status_f(sc, "Failed to start periodic timer\r\n");
 
@@ -733,7 +680,7 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
 void sl_btmesh_on_node_provisioned(uint16_t address,
                                    uint32_t iv_index)
 {
-  sl_status_t sc = sl_simple_timer_stop(&app_led_blinking_timer);
+  sl_status_t sc = app_timer_stop(&app_led_blinking_timer);
   app_assert_status_f(sc, "Failed to stop periodic timer\r\n");
   // Turn off LED
   init_done = true;
@@ -745,7 +692,7 @@ void sl_btmesh_on_node_provisioned(uint16_t address,
 /***************************************************************************//**
  * Timer Callbacks
  ******************************************************************************/
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data)
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data)
 {
   (void)data;
   (void)handle;
@@ -787,7 +734,7 @@ void sl_btmesh_factory_reset_on_node_reset(void)
  * @param[in] handle Handle of the sleeptimer instance
  * @param[in] data  Callback data
  ******************************************************************************/
-void sleeptimer_callback(sl_sleeptimer_timer_handle_t *handle, void *data){
+static void app_timer_callback(app_timer_t *handle, void *data){
   (void)handle;
   (void)data;
 
