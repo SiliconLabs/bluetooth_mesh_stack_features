@@ -34,6 +34,7 @@
  * maintained and there may be no bug maintenance planned for these resources.
  * Silicon Labs may update projects from time to time.
  ******************************************************************************/
+
 /* System header */
 #include <stdio.h>
 #include <string.h>
@@ -46,6 +47,8 @@
 #include "app_log.h"
 #include "app_assert.h"
 #include "sl_btmesh_factory_reset.h"
+
+#include "btmesh_change.h"
 
 #include "config.h"
 #include "sl_btmesh_lighting_client.h"
@@ -283,13 +286,7 @@ static void handle_boot_event(void)
     sc = sl_bt_system_get_identity_address(&address, &address_type);
     app_assert_status_f(sc, "Failed to get Bluetooth address\n");
     set_device_name(&address);
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    sc = sl_btmesh_prov_init();
-    if (sc != SL_STATUS_OK) {
-      app_log("Initialization failed (0x%lx)\r\n", sc);
-    } else {
-      initBLEMeshStack_app();
-    }
+    initBLEMeshStack_app();
   }
 }
 
@@ -452,6 +449,8 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
           app_log("Success, sl_btmesh_test_set_local_model_pub: 0x%x\r\n", DIM_SWITCH_MODEL_ID);
       }
 
+      app_log("\r\nPress BTN0 to start provisioning Nodes.\r\n\r\n");
+
       /* Scan for unprovisioned beacons */
       result = sl_btmesh_prov_scan_unprov_beacons();
     }
@@ -482,12 +481,12 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
               /* Display info banner */
               app_log("URI hash: 0x%lx ",evt->data.evt_prov_unprov_beacon.uri_hash);
               app_log("bearer: 0x%x ",evt->data.evt_prov_unprov_beacon.bearer);
-              app_log("address: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x ",bluetooth_device_table[idx].address.addr[0],
-                                                               bluetooth_device_table[idx].address.addr[1],
-                                                               bluetooth_device_table[idx].address.addr[2],
-                                                               bluetooth_device_table[idx].address.addr[3],
-                                                               bluetooth_device_table[idx].address.addr[4],
-                                                               bluetooth_device_table[idx].address.addr[5]);
+              app_log("address: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x ", bluetooth_device_table[idx].address.addr[0],
+                                                                 bluetooth_device_table[idx].address.addr[1],
+                                                                 bluetooth_device_table[idx].address.addr[2],
+                                                                 bluetooth_device_table[idx].address.addr[3],
+                                                                 bluetooth_device_table[idx].address.addr[4],
+                                                                 bluetooth_device_table[idx].address.addr[5]);
               app_log("(net id) %d (uuid) ",network_id);
               for (uint8_t i = 0; i < BLE_MESH_UUID_LEN_BYTE; i++) app_log("0x%x:", bluetooth_device_table[idx].uuid.data[i]);
               app_log("\r\n");
@@ -866,7 +865,7 @@ void app_button_press_cb(uint8_t button, uint8_t duration)
 #endif
       break;
     case APP_BUTTON_PRESS_DURATION_VERYLONG:
-      if (button == BUTTON_PRESS_BUTTON_1)
+      if (button == BUTTON_PRESS_BUTTON_0)
       {
         app_log("list unprovisioned devices\n");
         provisionBLEMeshStack_app(eMESH_PROV_NEXT);

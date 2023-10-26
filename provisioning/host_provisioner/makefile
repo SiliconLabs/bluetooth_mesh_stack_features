@@ -22,12 +22,12 @@ include $(SDK_DIR)/app/bluetooth/component_host/toolchain.mk
 include $(SDK_DIR)/app/bluetooth/component_host/app_log.mk
 include $(SDK_DIR)/app/bluetooth/component_host/app_assert.mk
 include $(SDK_DIR)/app/bluetooth/component_host/app_signal.mk
-include $(SDK_DIR)/app/bluetooth/component_host/ncp_host_btmesh.mk
-include $(SDK_DIR)/app/bluetooth/component_host/btmesh_db.mk
-include $(SDK_DIR)/app/bluetooth/component_host/btmesh_prov.mk
-include $(SDK_DIR)/app/bluetooth/component_host/btmesh_conf.mk
+include $(SDK_DIR)/app/btmesh/component_host/ncp_host_btmesh.mk
+include $(SDK_DIR)/app/btmesh/component_host/btmesh_db.mk
+include $(SDK_DIR)/app/btmesh/component_host/btmesh_prov.mk
+include $(SDK_DIR)/app/btmesh/component_host/btmesh_conf.mk
 include $(SDK_DIR)/app/bluetooth/component_host/slist.mk
-include $(SDK_DIR)/app/bluetooth/component_host/simple_timer.mk
+include $(SDK_DIR)/app/bluetooth/component_host/app_timer.mk
 
 
 ################################################################################

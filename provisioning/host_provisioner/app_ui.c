@@ -37,7 +37,7 @@
 #include "app_log.h"
 #include "app_sleep.h"
 #include "btmesh_prov.h"
-#include "sl_simple_timer.h"
+#include "app_timer.h"
 #include "sl_bt_api.h"
 #include "sl_btmesh_api.h"
 #include "btmesh_db.h"
@@ -63,6 +63,10 @@
 #define INPUT_BUFFER_LEN 100
 /// Time to sleep between user input checking in microseconds
 #define INPUT_SLEEP_US 10000
+
+#define PB_ADV 0
+#define PB_GATT 1
+#define PB_REMOTE 2
 
 // -----------------------------------------------------------------------------
 // Enums
@@ -125,7 +129,7 @@ static bool peek_stdin(char *buf, int buffer_length, int *num_read);
 * @param[in] timer Pointer to the timer used
 * @param[in] data Data from the timer
 *******************************************************************************/
-static void on_scan_timer(sl_simple_timer_t *timer, void *data);
+static void on_scan_timer(app_timer_t *timer, void *data);
 
 /***************************************************************************//**
 * Callback for the timer used during provisioner reset
@@ -133,7 +137,7 @@ static void on_scan_timer(sl_simple_timer_t *timer, void *data);
 * @param[in] timer Pointer to the timer used
 * @param[in] data Data from the timer
 *******************************************************************************/
-static void on_reset_timer(sl_simple_timer_t *timer, void *data);
+static void on_reset_timer(app_timer_t *timer, void *data);
 
 // -----------------------------------------------------------------------------
 // Static Variables
@@ -156,9 +160,9 @@ static uint16_t networks_on_startup;
 /// The UUID to be used throughout node removal process
 static uuid_128 remove_uuid;
 /// Timer for scanning for unprovisioned devices
-static sl_simple_timer_t scan_timer;
+static app_timer_t scan_timer;
 /// Timer for provisioner node reset
-static sl_simple_timer_t reset_timer;
+static app_timer_t reset_timer;
 
 // -----------------------------------------------------------------------------
 // Function definitions
@@ -297,11 +301,11 @@ void handle_ui_scan(void)
         app_log("Scanning started" APP_LOG_NEW_LINE);
       }
       // Let the provisioner scan unprovisioned nodes
-      sl_simple_timer_start(&scan_timer,          // Timer pointer
-                            SCAN_TIMER_MS,        // Timer duration
-                            on_scan_timer,        // Timer callback
-                            NULL,                 // Timer data, not needed
-                            false);               // Not periodic
+      app_timer_start(&scan_timer,          // Timer pointer
+                      SCAN_TIMER_MS,        // Timer duration
+                      on_scan_timer,        // Timer callback
+                      NULL,                 // Timer data, not needed
+                      false);               // Not periodic
       command_state = UI_IN_PROGRESS;
       ui_state = PROCESSING;
       break;
@@ -380,12 +384,23 @@ void handle_ui_provision(void)
           size_t len = strlen(input_buffer);
           if (ADDRESS_LEN_WITHOUT_PREFIX > len) {
             uint16_t id = (uint16_t)atoi(input_buffer);
-            sc = btmesh_prov_start_provisioning_by_id(netkey_index, id, 0);
+            uuid_128 uuid;
+            bd_addr mac = { 0 };
+            sc = btmesh_prov_get_unprov_uuid_by_id(id, &uuid);
+            app_assert_status_f(sc, "btmesh_prov_get_unprov_uuid_by_id failed" APP_LOG_NEW_LINE);
+            sc = btmesh_prov_setup_provisioning(netkey_index, uuid, PB_ADV, 0);
+            app_assert_status_f(sc, "btmesh_prov_setup_provisioning failed" APP_LOG_NEW_LINE);
+            sc = btmesh_prov_provision_adv_device(netkey_index, uuid, mac, PB_ADV, 0);
+            app_assert_status_f(sc, "btmesh_prov_provision_adv_device failed" APP_LOG_NEW_LINE);
           } else if (UUID_LEN_WITHOUT_SEPARATORS == len
                      || UUID_LEN_WITH_SEPARATORS == len) {
             uuid_128 uuid;
+            bd_addr mac = { 0 };
             app_parse_uuid(input_buffer, len, &uuid);
-            sc = btmesh_prov_start_provisioning_by_uuid(netkey_index, uuid, 0);
+            sc = btmesh_prov_setup_provisioning(netkey_index, uuid, PB_ADV, 0);
+            app_assert_status_f(sc, "btmesh_prov_setup_provisioning failed" APP_LOG_NEW_LINE);
+            sc = btmesh_prov_provision_adv_device(netkey_index, uuid, mac, 0, 0);
+            app_assert_status_f(sc, "btmesh_prov_provision_adv_device failed" APP_LOG_NEW_LINE);
           } else {
             app_log_error("Invalid input format!" APP_LOG_NEW_LINE);
             command_state = UI_FINISHED;
@@ -553,12 +568,20 @@ void handle_ui_remove(void)
           size_t len = strlen(input_buffer);
           if (ADDRESS_LEN_WITHOUT_PREFIX > len) {
             uint16_t id = (uint16_t)atoi(input_buffer);
-            sc = btmesh_prov_remove_node_by_id(id, remove_node_job_status_ui, &remove_uuid);
+            uuid_128 uuid;
+            sc = btmesh_prov_get_prov_uuid_by_id(id, &uuid);
+            app_assert_status_f(sc, "btmesh_prov_get_unprov_uuid_by_id failed" APP_LOG_NEW_LINE);
+            sc = btmesh_prov_remove_node_by_uuid(uuid, remove_node_job_status_ui);
+            app_assert_status_f(sc, "btmesh_prov_remove_node_by_uuid failed" APP_LOG_NEW_LINE);
           } else if (ADDRESS_LEN_WITHOUT_PREFIX == len
                      || ADDRESS_LEN_WITH_PREFIX == len) {
             uint16_t addr;
             app_parse_address(input_buffer, len, &addr);
-            sc = btmesh_prov_remove_node_by_address(addr, remove_node_job_status_ui, &remove_uuid);
+            uuid_128 uuid;
+            sc = btmesh_prov_get_prov_uuid_by_address(addr, &uuid);
+            app_assert_status_f(sc, "btmesh_prov_get_prov_uuid_by_address failed" APP_LOG_NEW_LINE);
+            sc = btmesh_prov_remove_node_by_uuid(uuid, remove_node_job_status_ui);
+            app_assert_status_f(sc, "btmesh_prov_remove_node_by_uuid failed" APP_LOG_NEW_LINE);
           } else if (UUID_LEN_WITHOUT_SEPARATORS == len
                      || UUID_LEN_WITH_SEPARATORS == len) {
             uuid_128 uuid;
@@ -704,11 +727,11 @@ void handle_ui_reset(void)
       app_log_nl();
       sl_btmesh_node_reset();
       // Timer to let the NVM clear properly
-      sl_simple_timer_start(&reset_timer,         // Timer pointer
-                            RESET_TIMER_MS,       // Timer duration
-                            on_reset_timer,       // Timer callback
-                            NULL,                 // Timer data, not needed
-                            false);               // Not periodic
+      app_timer_start(&reset_timer,         // Timer pointer
+                      RESET_TIMER_MS,       // Timer duration
+                      on_reset_timer,       // Timer callback
+                      NULL,                 // Timer data, not needed
+                      false);               // Not periodic
       command_state = UI_IN_PROGRESS;
       break;
     case UI_IN_PROGRESS:
@@ -808,11 +831,13 @@ static bool peek_stdin(char *buf, int buffer_length, int *num_read)
 }
 
 void btmesh_prov_on_unprovisioned_node_list_evt(uint16_t id,
-                                                uuid_128 uuid)
+                                                uuid_128 uuid,
+                                                uint16_t oob_capabilities)
 {
   app_log("Unprovisioned node" APP_LOG_NEW_LINE);
   app_log("ID:      %d" APP_LOG_NEW_LINE, id);
   print_uuid(&uuid);
+  app_log("OOB Capabilities: 0x%04x" APP_LOG_NEW_LINE, oob_capabilities);
   app_log_nl();
 }
 
@@ -880,12 +905,12 @@ void btmesh_prov_on_provision_failed_evt_ui(void)
   command_state = UI_FINISHED;
 }
 
-static void on_scan_timer(sl_simple_timer_t *timer, void *data)
+static void on_scan_timer(app_timer_t *timer, void *data)
 {
   command_state = UI_FINISHED;
 }
 
-static void on_reset_timer(sl_simple_timer_t *timer, void *data)
+static void on_reset_timer(app_timer_t *timer, void *data)
 {
   command_state = UI_FINISHED;
 }
