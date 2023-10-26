@@ -35,20 +35,33 @@ This repository contains example projects which demonstrate the features of the 
 
 - Models - **HSL Lighting Client Example**
 - Models - **Switch NCP Host Example**
-- Models - **Vendor Specific Model Examples**
+- Models - **Vendor Specific Model Examples** (Server/Client)
 - Network - **IV Recovery Example**
 - Network - **IV Update Example**
 - Network - **Scanning BLE beacons in Bluetooth Mesh mode Example**
 - Node - **Node Memory Reset i.e. Erase NVM Example**
 - Provisioning - **Embedded Provisioner Example**
 - Provisioning - **Host Provisioner Example**
-- Provisioning - **Embedded Provisioner with OOB authentication Examples**
-- Provisioning - **Self Provisioning Examples**
+- Provisioning - **Embedded Provisioning with OOB authentication Examples** (Provisioner/Provisionee)
+- Provisioning - **Remote Provisioning Examples** (Server/Client)
+- Provisioning - **Self Provisioning Examples** (Light/Switch)
 - Proxy Protocol - **Proxy Client Example**
 
 ### Mobile examples
 
 - ADK -  **Reduction of GATT Connections for Provisioning with Configuration**
+
+### Usage
+- The examples can be constructed manually following the individual README files, but for user convenience, the cloned repository can be added to Simplicity Studio 5 following the steps below:
+- Clone the repository with git
+- Open the ```Preferences``` and browse to ```Simplicity Studio``` > ```External Repos```
+![preferences](images/preferences.png)
+- Click ```Add...``` and browse the ```.git``` folder of the cloned repo
+![new_repository](images/new_repository.png)
+- Clicking ```Finish```, the repo should be in the list
+![external_repos](images/external_repos.png)
+- Afterwards, the examples can be easily created from the Studio itself
+![simplicity_studio](images/simplicity_studio.png)
 
 ### KBAs
 
