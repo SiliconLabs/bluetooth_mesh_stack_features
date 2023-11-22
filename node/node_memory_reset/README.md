@@ -1,4 +1,4 @@
-# Mesh Erase NVM #
+# Node Memory Reset i.e. Erase NVM Example
 
 ## Description ##
 
@@ -19,6 +19,8 @@ GSDK v4.3.1
 ---
 
 ## Important
+
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -46,7 +48,7 @@ This project README assumes that the reader is familiar with the usage of Silico
   - If everything went right, you should see the board booting up
   - Now, you may provision the node into a Network and after that, erase the NVM content with pressing ```Button 0``` and ```Reset``` at the same time. You will notice that as the result of the loss of data, the node will not be able properly reinitialize.
 
-  <img src="images/erase_nvm.png">
-  <img src="images/init_failed.png">
+  ![erase_nvm](images/erase_nvm.png)
+  ![init_failed](images/init_failed.png)
 
 ---

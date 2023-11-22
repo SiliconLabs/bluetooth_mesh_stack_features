@@ -1,6 +1,6 @@
 project_name: btmesh_soc_embedded_provisioner
 package: Btmesh
-label: Bluetooth Mesh SoC - Embedded Provisioner
+label: Bluetooth Mesh - SoC Embedded Provisioner
 description: >
   This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device and extracting the Device Composition Database data from the freshly provisioned node.
 
@@ -49,12 +49,14 @@ source:
   - path: ../src/app.c
   - path: ../src/main.c
   - path: ../src/config.c
+  - path: ../src/btmesh_change.c
 
 include:
   - path: ../inc/
     file_list:
     - path: app.h
     - path: config.h
+    - path: btmesh_change.h
 
 config_file:
   - override:
@@ -73,10 +75,15 @@ readme:
 
 other_file:
   - path: ../images/install_button_press.png
+    directory: images
   - path: ../images/add_config_client_model.png
+    directory: images
   - path: ../images/increase_values_1.png
+    directory: images
   - path: ../images/increase_values_2.png
+    directory: images
   - path: ../images/dcd_infos.png
+    directory: images
 
 configuration:
   - name: APP_LOG_LEVEL

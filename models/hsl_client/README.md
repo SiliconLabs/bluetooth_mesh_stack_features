@@ -1,4 +1,4 @@
-# HSL Lighting Example
+# HSL Lighting Client Example
 
 ## Introduction
 
@@ -35,6 +35,10 @@ There are 4 primary ways to describe a color.
 The ```Bluetooth Mesh - SoC Light HSL``` is an example application that you can use as a template for Bluetooth Mesh HSL Light applications.
 
 Currently the ```Bluetooth Mesh - SoC Switch``` does not support HSL Client (i.e. cannot set hue or saturation), so the switch side needs some porting job.
+
+## Important
+
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
 
 ## Project Setup
 ### HSL Switch

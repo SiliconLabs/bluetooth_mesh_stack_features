@@ -1,4 +1,4 @@
-# Vendor Specific Model Example
+# Vendor Specific Model Examples
 
 ## Details
 ### Introduction
@@ -12,8 +12,12 @@ It’s also defined in the section 2.3.6 of [Mesh Profile Specification 1.0](htt
 
 > “Models may be defined and adopted by Bluetooth SIG and may be defined by vendors. Models defined by Bluetooth SIG are known as SIG adopted models, and models defined by vendors are known as vendor models. Models are identified by unique identifiers, which can be either 16 bits, for SIG adopted models, or 32 bits, for vendor models.”
 
+## Important
+
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+
 ## SDK version
-Gecko SDK 4.1 or newer
+Gecko SDK 4.3.1 or newer
 - Bluetooth Mesh SDK 3.x or newer
 
 ## Hardware Required

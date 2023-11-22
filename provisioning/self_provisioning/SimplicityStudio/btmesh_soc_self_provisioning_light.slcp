@@ -1,11 +1,11 @@
 project_name: btmesh_soc_self_provisioning_light
 package: Btmesh
-label: Bluetooth Mesh SoC - Self Provisioning Light
+label: Bluetooth Mesh - SoC Self Provisioning Light
 description: >
   This example is aimed to demonstrate how to set up a fully pre-configured Bluetooth Mesh network with everything being hard-coded into the nodes. This solution is only for test purposes and in no way suggested for live application!
 
 category: Bluetooth Mesh Examples
-quality: production
+quality: development
 
 filter:
   - name: "Wireless Technology"
@@ -90,6 +90,14 @@ config_file:
 
 readme:
   - path: ../README.md
+
+other_file:
+  - path: ../images/install_test.png
+    directory: images
+  - path: ../images/light_log.png
+    directory: images
+  - path: ../images/switch_log.png
+    directory: images
 
 configuration:
   - name: APP_LOG_LEVEL

@@ -1,4 +1,4 @@
-# Embedded Provisioner with OOB authentication #
+# Embedded Provisioning with OOB authentication Examples
 
 ## Description ##
 
@@ -17,6 +17,8 @@ GSDK v4.3.1
 ---
 
 ## Important
+
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 

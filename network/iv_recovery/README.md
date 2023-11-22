@@ -19,6 +19,8 @@ same frequency of one message every second, the lifetime of the network using th
 
 ## Important
 
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
 ---

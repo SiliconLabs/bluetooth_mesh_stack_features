@@ -1,11 +1,11 @@
 project_name: btmesh_soc_vendor_server
 package: Btmesh
-label: Bluetooth Mesh - SoC Vendor Client
+label: Bluetooth Mesh - SoC Vendor Server
 description: >
   This example aims at helping those developers who want to use the vendor specific models in their Bluetooth Mesh products.
 
 category: Bluetooth Mesh Examples
-quality: production
+quality: development
 
 filter:
   - name: "Wireless Technology"

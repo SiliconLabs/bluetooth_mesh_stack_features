@@ -9,7 +9,7 @@ Silicon Labs Bluetooth mesh stack is meant for Silicon labs Wireless Gecko SoCs 
 Network Co-Processor (NCP) mode, where the Bluetooth stack runs in a Wireless Gecko and the application runs on a separate
 host MCU. For this use case, the Bluetooth stack can be configured into NCP mode where the API is exposed over a serial interface such as UART.
 
-<img src="images/ncp_diagram.png">
+![ncp_diagram](images/ncp_diagram.png)
 
 ---
 
@@ -32,6 +32,7 @@ This project README assumes that the reader is familiar with compiling source co
 
  - Prepare your environment with the required compiling tools.
  - Run ```make``` in the root folder of the project.
+ - Optionally, set the ```SDK_DIR``` environment variable to the path of your chosen GSDK (i.e. ```make SDK_DIR=/Users/user/SimplicityStudio/SDKs/gecko_sdk```)
  - Flash one of the boards with ```Bluetooth Mesh - NCP Empty``` example (NCP board) and the other one with ```Bluetooth Mesh - SoC Light``` (Standalone board) and fire them up.
  - Start the compiled desktop software with the proper arguments, eg.:
  ```sh
@@ -40,17 +41,17 @@ This project README assumes that the reader is familiar with compiling source co
   - The ```-u``` should be the serial port of the NCP WSTK board and the ```-b``` is the default baudrate of 115200 bits/sec.
   - If everything went right, you will see the board booting up (Friendship estabilishment will happen after configuring the Standalone board as a Friend node):
 
-<img src="images/terminal_start.png">
+![terminal_start](images/terminal_start.png)
 
   - If both of the WSTKs are running, provision them into the same network with SiliconLabs's own Bluetooth Mesh Application for Android/iOS.
 
-<img src="images/bluetooth_mesh_provision.jpg">
+![bluetooth_mesh_provision](images/bluetooth_mesh_provision.jpg)
 
   - After successful provisioning, create a Group for the two boards and assign them the roles of ```Light Lightness Client``` for the NCP and ```Light Lightness Server``` for the Standalone board.
   - The NCP board is configured as a Low Power Node, so turn on the Friend functionality for the Standalone node (Friendship should be estabilished after this).
   - If everything is fine, you should be able to control the LEDs of the Standalone board through the NCP board via the terminal with these commands:
 
-<img src="images/terminal_usage.png">
+![terminal_usage](images/terminal_usage.png)
 
 ---
 

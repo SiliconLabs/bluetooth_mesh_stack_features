@@ -1,6 +1,6 @@
 project_name: btmesh_soc_iv_recovery
 package: Btmesh
-label: Bluetooth Mesh SoC - IV Recovery
+label: Bluetooth Mesh - SoC IV Recovery
 description: >
   This example project is aimed to demonstrate the IV Index recovery process.
 

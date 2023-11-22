@@ -1,6 +1,6 @@
 project_name: btmesh_soc_oob_provisioning_provisioner
 package: Btmesh
-label: Bluetooth Mesh SoC - OOB Provisioning Provisioner
+label: Bluetooth Mesh - SoC OOB Provisioning Provisioner
 description: >
   This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device with out of band authentication and extracting the Device Composition Database data from the freshly provisioned node. The example also contains the necessary codes for a node to-be provisioned (provisionee) with the OOB support, required for the full demonstration.
 

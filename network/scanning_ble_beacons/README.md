@@ -1,10 +1,14 @@
-# Scanning BLE beacons in Bluetooth Mesh mode #
+# Scanning BLE beacons in Bluetooth Mesh mode Example
 
 ## Summary ##
 
 Bluetooth mesh is based on advertisements, meaning that under the hood the stack is scanning all the time. By default, the scan response events are not passed to the application but they are just consumed by the mesh stack and then silently discarded.
 
 This example illustrated a way to scan BLE advertisements when the Bluetooth mesh stack is running. It looks through advertising data in scan response events and searches for the mesh proxy UUID 0x1828. If a proxy advertisement is found, the address of the sender and RSSI are printed to debug output.
+
+## Important
+
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
 
 ### Implementation 
 

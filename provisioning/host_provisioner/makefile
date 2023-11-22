@@ -2,8 +2,8 @@
 # General project settings                                                     #
 ################################################################################
 
-PROJECTNAME = btmesh_host_provisioner
-SDK_DIR = ../../../..
+PROJECTNAME ?= btmesh_host_provisioner
+SDK_DIR ?= ../../../..
 
 # Disable threading as handling more than a few mesh devices can cause data loss
 HOST_THREADING = 0

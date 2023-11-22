@@ -1,6 +1,6 @@
 project_name: btmesh_soc_iv_update
 package: Btmesh
-label: Bluetooth Mesh SoC - IV Update
+label: Bluetooth Mesh - SoC IV Update
 description: >
   This example project is aimed to demonstrate the IV Index update process.
 

@@ -1,6 +1,6 @@
 project_name: btmesh_soc_remote_provisioning_client
 package: Btmesh
-label: Bluetooth Mesh SoC - Remote Provisioning Client
+label: Bluetooth Mesh - SoC Remote Provisioning Client
 description: >
   This example demonstrates the Remote Provisioning feature of the Silicon Labs Mesh SDK. With it, a device can be provisioned without a direct radio connection between the provisioner and the unprovisioned node.
 
@@ -32,6 +32,7 @@ component:
   - id: btmesh_stack_config_client
   - id: btmesh_stack_provisioner
   - id: btmesh_feature_prov
+  - id: btmesh_remote_provisioning_client
   - id: btmesh_provisioner
   - id: btmesh_proxy
   - id: btmesh_stack
@@ -54,8 +55,48 @@ include:
     file_list:
     - path: app.h
 
+config_file:
+  - override:
+      component: btmesh_dcd_configuration
+      file_id: dcd_configuration_file_id
+    path: ../client/config/dcd_config.btmeshconf
+    directory: btmeshconf
+  - override:
+      component: gatt_configuration
+      file_id: gatt_configuration_file_id
+    path: ../client/config/gatt_configuration.btconf
+    directory: btconf
+
 readme:
   - path: ../README.md
+
+other_file:
+  - path: ../images/remote_provisioning.png
+    directory: images
+  - path: ../images/install_button_press.png
+    directory: images
+  - path: ../images/add_config_client_model.png
+    directory: images
+  - path: ../images/increase_values_1.png
+    directory: images
+  - path: ../images/increase_values_2.png
+    directory: images
+  - path: ../images/enable_virtual_com.png
+    directory: images
+  - path: ../images/client_log_1.png
+    directory: images
+  - path: ../images/server_log_1.png
+    directory: images
+  - path: ../images/client_log_2.png
+    directory: images
+  - path: ../images/sw_log_1.png
+    directory: images
+  - path: ../images/client_log_3.png
+    directory: images
+  - path: ../images/client_log_4.png
+    directory: images
+  - path: ../images/sw_log_2.png
+    directory: images
 
 configuration:
   - name: APP_LOG_LEVEL

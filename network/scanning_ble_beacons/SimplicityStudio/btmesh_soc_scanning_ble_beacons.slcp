@@ -1,6 +1,6 @@
 project_name: btmesh_soc_scanning_ble_beacons
 package: Btmesh
-label: Bluetooth Mesh SoC - Scanning BLE beacons
+label: Bluetooth Mesh - SoC Scanning BLE beacons
 description: >
   This example illustrated a way to scan BLE advertisements when the Bluetooth mesh stack is running.
 

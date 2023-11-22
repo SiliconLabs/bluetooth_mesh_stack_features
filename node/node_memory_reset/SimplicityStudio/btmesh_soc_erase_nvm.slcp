@@ -1,6 +1,6 @@
 project_name: btmesh_soc_erase_nvm
 package: Btmesh
-label: Bluetooth Mesh SoC - Erase NVM
+label: Bluetooth Mesh - SoC Erase NVM
 description: >
   This example project is aimed to demonstrate how to erase the entire Bluetooth Mesh configuration region from the NVM by deleting the associated keys. 
 
@@ -81,6 +81,12 @@ config_file:
 
 readme:
   - path: ../README.md
+
+other_file:
+  - path: ../images/erase_nvm.png
+    directory: images
+  - path: ../images/init_failed.png
+    directory: images
 
 configuration:
   - name: APP_LOG_LEVEL

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <model:MDescriptors xmlns:model="http://www.silabs.com/ss/Studio.ecore">
-  <descriptors name="btmesh_soc_embedded_provisioner" label="Bluetooth Mesh SoC - Embedded Provisioner" description="This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device and extracting the Device Composition Database data from the freshly provisioned node.&#xA;">
+  <descriptors name="btmesh_soc_embedded_provisioner" label="Bluetooth Mesh - SoC Embedded Provisioner" description="This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device and extracting the Device Composition Database data from the freshly provisioned node.&#xA;">
     <properties key="namespace" value="template.uc"/>
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="provisioning/embedded_provisioner/SimplicityStudio/btmesh_soc_embedded_provisioner.slcp"/>
@@ -12,7 +12,7 @@
     <properties key="category" value="Bluetooth Examples"/>
     <properties key="quality" value="development"/>
   </descriptors>
-  <descriptors name="btmesh_soc_remote_provisioning_client" label="Bluetooth Mesh SoC - Remote Provisioning Client" description="This example demonstrates the Remote Provisioning feature of the Silicon Labs Mesh SDK. With it, a device can be provisioned without a direct radio connection between the provisioner and the unprovisioned node.&#xA;">
+  <descriptors name="btmesh_soc_remote_provisioning_client" label="Bluetooth Mesh - SoC Remote Provisioning Client" description="This example demonstrates the Remote Provisioning feature of the Silicon Labs Mesh SDK. With it, a device can be provisioned without a direct radio connection between the provisioner and the unprovisioned node.&#xA;">
     <properties key="namespace" value="template.uc"/>
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="provisioning/remote_provisioning/SimplicityStudio/btmesh_soc_remote_provisioning_client.slcp"/>
@@ -24,7 +24,7 @@
     <properties key="category" value="Bluetooth Examples"/>
     <properties key="quality" value="development"/>
   </descriptors>
-  <descriptors name="btmesh_soc_remote_provisioning_server" label="Bluetooth Mesh SoC - Remote Provisioning Server" description="This example demonstrates the Remote Provisioning feature of the Silicon Labs Mesh SDK. With it, a device can be provisioned without a direct radio connection between the provisioner and the unprovisioned node.&#xA;">
+  <descriptors name="btmesh_soc_remote_provisioning_server" label="Bluetooth Mesh - SoC Remote Provisioning Server" description="This example demonstrates the Remote Provisioning feature of the Silicon Labs Mesh SDK. With it, a device can be provisioned without a direct radio connection between the provisioner and the unprovisioned node.&#xA;">
     <properties key="namespace" value="template.uc"/>
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="provisioning/remote_provisioning/SimplicityStudio/btmesh_soc_remote_provisioning_server.slcp"/>
@@ -36,7 +36,7 @@
     <properties key="category" value="Bluetooth Examples"/>
     <properties key="quality" value="development"/>
   </descriptors>
-  <descriptors name="btmesh_soc_self_provisioning_light" label="Bluetooth Mesh SoC - Self Provisioning Light" description="This example is aimed to demonstrate how to set up a fully pre-configured Bluetooth Mesh network with everything being hard-coded into the nodes. This solution is only for test purposes and in no way suggested for live application!&#xA;">
+  <descriptors name="btmesh_soc_self_provisioning_light" label="Bluetooth Mesh - SoC Self Provisioning Light" description="This example is aimed to demonstrate how to set up a fully pre-configured Bluetooth Mesh network with everything being hard-coded into the nodes. This solution is only for test purposes and in no way suggested for live application!&#xA;">
     <properties key="namespace" value="template.uc"/>
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="provisioning/self_provisioning/SimplicityStudio/btmesh_soc_self_provisioning_light.slcp"/>
@@ -48,11 +48,131 @@
     <properties key="category" value="Bluetooth Examples"/>
     <properties key="quality" value="development"/>
   </descriptors>
-  <descriptors name="btmesh_soc_self_provisioning_switch" label="Bluetooth Mesh SoC - Self Provisioning Switch" description="This example is aimed to demonstrate how to set up a fully pre-configured Bluetooth Mesh network with everything being hard-coded into the nodes. This solution is only for test purposes and in no way suggested for live application!&#xA;">
+  <descriptors name="btmesh_soc_self_provisioning_switch" label="Bluetooth Mesh - SoC Self Provisioning Switch" description="This example is aimed to demonstrate how to set up a fully pre-configured Bluetooth Mesh network with everything being hard-coded into the nodes. This solution is only for test purposes and in no way suggested for live application!&#xA;">
     <properties key="namespace" value="template.uc"/>
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="provisioning/self_provisioning/SimplicityStudio/btmesh_soc_self_provisioning_switch.slcp"/>
     <properties key="readmeFiles" value="provisioning/self_provisioning/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_oob_provisioning_provisionee" label="Bluetooth Mesh - SoC OOB Provisioning Provisionee" description="This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device with out of band authentication and extracting the Device Composition Database data from the freshly provisioned node. The example also contains the necessary codes for a node to-be provisioned (provisionee) with the OOB support, required for the full demonstration.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="provisioning/oob_provisioning/SimplicityStudio/btmesh_soc_oob_provisioning_provisionee.slcp"/>
+    <properties key="readmeFiles" value="provisioning/oob_provisioning/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_oob_provisioning_provisioner" label="Bluetooth Mesh - SoC OOB Provisioning Provisioner" description="This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device with out of band authentication and extracting the Device Composition Database data from the freshly provisioned node. The example also contains the necessary codes for a node to-be provisioned (provisionee) with the OOB support, required for the full demonstration.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="provisioning/oob_provisioning/SimplicityStudio/btmesh_soc_oob_provisioning_provisioner.slcp"/>
+    <properties key="readmeFiles" value="provisioning/oob_provisioning/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_erase_nvm" label="Bluetooth Mesh - SoC Erase NVM" description="This example project is aimed to demonstrate how to erase the entire Bluetooth Mesh configuration region from the NVM by deleting the associated keys.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="node/node_memory_reset/SimplicityStudio/btmesh_soc_erase_nvm.slcp"/>
+    <properties key="readmeFiles" value="node/node_memory_reset/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_scanning_ble_beacons" label="Bluetooth Mesh - SoC Scanning BLE beacons" description="This example illustrated a way to scan BLE advertisements when the Bluetooth mesh stack is running.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="network/scanning_ble_beacons/SimplicityStudio/btmesh_soc_scanning_ble_beacons.slcp"/>
+    <properties key="readmeFiles" value="network/scanning_ble_beacons/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_iv_recovery" label="Bluetooth Mesh - SoC IV Recovery" description="This example project is aimed to demonstrate the IV Index recovery process.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="network/iv_recovery/SimplicityStudio/btmesh_soc_iv_recovery.slcp"/>
+    <properties key="readmeFiles" value="network/iv_recovery/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_iv_update" label="Bluetooth Mesh - SoC IV Update" description="This example project is aimed to demonstrate the IV Index update process.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="network/iv_update/SimplicityStudio/btmesh_soc_iv_update.slcp"/>
+    <properties key="readmeFiles" value="network/iv_update/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_vendor_client" label="Bluetooth Mesh - SoC Vendor Client" description="This example aims at helping those developers who want to use the vendor specific models in their Bluetooth Mesh products.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="models/vendor/SimplicityStudio/btmesh_soc_vendor_client.slcp"/>
+    <properties key="readmeFiles" value="models/vendor/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_vendor_server" label="Bluetooth Mesh - SoC Vendor Server" description="This example aims at helping those developers who want to use the vendor specific models in their Bluetooth Mesh products.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="models/vendor/SimplicityStudio/btmesh_soc_vendor_server.slcp"/>
+    <properties key="readmeFiles" value="models/vendor/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_hsl_client" label="Bluetooth Mesh - SoC HSL Client" description="This example extends the Bluetooth Mesh - SoC Switch with HSL Client capabilities.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="models/hsl_client/SimplicityStudio/btmesh_soc_hsl_client.slcp"/>
+    <properties key="readmeFiles" value="models/hsl_client/README.md"/>
+    <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
+    <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
+    <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
+    <properties key="toolchainCompatibility" value="gcc iar segger"/>
+    <properties key="category" value="Bluetooth Examples"/>
+    <properties key="quality" value="development"/>
+  </descriptors>
+  <descriptors name="btmesh_soc_proxy_client" label="Bluetooth Mesh - SoC Proxy Client" description="The proxy protocol enables nodes to send and receive Network PDUs, mesh beacons, proxy configuration messages and Provisioning PDUs over a connection-oriented bearer.&#xA;">
+    <properties key="namespace" value="template.uc"/>
+    <properties key="keywords" value="universal\ configurator"/>
+    <properties key="projectFilePaths" value="proxy_protocol/proxy_client/SimplicityStudio/btmesh_soc_proxy_client.slcp"/>
+    <properties key="readmeFiles" value="proxy_protocol/proxy_client/README.md"/>
     <properties key="boardCompatibility" value="brd2601a brd2601b   brd4104a brd4108a brd4111a  brd4158a brd4159a  brd4165b  brd4167a brd4168a   brd4171a  brd4174a brd4174b brd4175a brd4176a brd4177a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183b brd4183c brd4184a brd4184b brd4185a brd4186a brd4186b brd4186c brd4187a brd4187b brd4187c brd4188a brd4188b  brd4191a brd4194a brd4195a brd4196a   brd4305a brd4305c brd4305d brd4305e brd4306a brd4306b brd4306c brd4306d brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4310a brd4311a brd4311b brd4312a brd4314a  brd4316a brd4317a brd4319a brd4330a brd4331a  com.silabs.board.none"/>
     <properties key="partCompatibility" value=".*bgm13.* .*bgm21.* .*bgm22.* .*bgm27.* .*efr32bg13p.* .*efr32bg21.* .*efr32bg22.* .*efr32bg24.* .*efr32bg27.* .*efr32mg13p.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm13.* .*mgm21.* .*mgm22.* .*mgm24.* .*mgm27.*"/>
     <properties key="ideCompatibility" value="iar-embedded-workbench makefile-ide simplicity-ide"/>
