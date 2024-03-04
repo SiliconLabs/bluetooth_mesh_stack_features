@@ -84,7 +84,10 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
       // Initialize Mesh stack in Node operation mode,
       // wait for initialized event
       sc = sl_btmesh_node_init();
-      app_assert_status_f(sc, "Failed to init node");
+      // Needed because of self-initializing component
+      if(sc !=  SL_STATUS_INVALID_STATE) {
+        app_assert_status_f(sc, "Failed to init node");
+      }
 
       bd_addr address;
       uint8_t address_type;
@@ -136,7 +139,10 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         // The Node is now initialized,
         // start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers
         sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\r\n");
+        // Needed because of self-initializing component
+        if(sc !=  SL_STATUS_INVALID_STATE) {
+          app_assert_status_f(sc, "Failed to start unprovisioned beaconing\r\n");
+        }
         start_advertising();
       }
       break;

@@ -1,4 +1,4 @@
-# Host Provisioner #
+# Host Provisioner Example
 
 ## Description ##
 
@@ -12,7 +12,7 @@ This example is aimed to demonstrate our Mesh library's capabilities in building
 
 ## Gecko SDK version ##
 
-GSDK v4.1.1
+GSDK v4.3.1
 
 ## Important
 
@@ -35,15 +35,16 @@ This project README assumes that the reader is familiar with the usage of Silico
   - Open a new terminal on the computer
   - Navigate to the project's folder
   - Build the sample app by typing ```make```
-  - Flash the radio board with the ```Bluetooth - NCP``` example included with the Silicon Labs GSDK
+  - Optionally, set the ```SDK_DIR``` environment variable to the path of your chosen GSDK (i.e. ```make SDK_DIR=/Users/user/SimplicityStudio/SDKs/gecko_sdk```)
+  - Flash the radio board with the ```Bluetooth Mesh - NCP Empty v1.1``` example included with the Silicon Labs GSDK
   - Connect the NCP target to the NCP host (if the NCP host differs from the computer used to flash the radio board)
-  - Run the sample app with appropriate parameters (e.g. ```./exe/btmesh_host_provisioner -u /dev/ttyACM0```)
+  - Run the sample app with appropriate parameters (e.g. ```./exe/btmesh_host_provisioner -u /dev/tty.usbmodem0004402960811```)
   - Type the desired functionality, which you would like to perform
 
-  <img src="images/terminal.png">
+  ![terminal](images/terminal.png)
 
   - You are free to run the program with command line arguments
 
-  <img src="images/arguments.png">
+  ![arguments](images/arguments.png)
 
 ---

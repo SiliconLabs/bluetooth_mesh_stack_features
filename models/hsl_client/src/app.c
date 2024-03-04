@@ -41,6 +41,9 @@
 
 #include "app_assert.h"
 
+#include "btmesh_change.h"
+#include "sl_btmesh_hsl_client.h"
+
 /* Buttons and LEDs headers */
 #include "app_button_press.h"
 #include "sl_simple_button.h"
@@ -61,7 +64,7 @@
 #endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 
 /* Switch app headers */
-#include "sl_simple_timer.h"
+#include "app_timer.h"
 #include "sl_btmesh_factory_reset.h"
 #include "sl_btmesh_lighting_client.h"
 #include "sl_btmesh_ctl_client.h"
@@ -104,10 +107,10 @@
 #endif // SL_CATALOG_BTMESH_WSTK_LCD_PRESENT
 
 /// periodic timer handle
-static sl_simple_timer_t app_led_blinking_timer;
+static app_timer_t app_led_blinking_timer;
 
 /// periodic timer callback
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data);
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data);
 // Handling of boot event
 static void handle_boot_event(void);
 // Handling of le connection events
@@ -345,7 +348,11 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         // Enable ADV and GATT provisioning bearer
         sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
 
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
+        switch (sc) {
+          case 0x00: break;
+          case 0x02: app_log("Unprovisioned beaconing already running\r\n"); break;
+          default: app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
+        }
       }
       break;
 
@@ -415,11 +422,11 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
   // Change buttons to LEDs in case of shared pin
   change_buttons_to_leds();
 
-  sl_status_t sc = sl_simple_timer_start(&app_led_blinking_timer,
-                                         APP_LED_BLINKING_TIMEOUT,
-                                         app_led_blinking_timer_cb,
-                                         NO_CALLBACK_DATA,
-                                         true);
+  sl_status_t sc = app_timer_start(&app_led_blinking_timer,
+                                   APP_LED_BLINKING_TIMEOUT,
+                                   app_led_blinking_timer_cb,
+                                   NO_CALLBACK_DATA,
+                                   true);
 
   app_assert_status_f(sc, "Failed to start periodic timer\n");
 
@@ -434,7 +441,7 @@ void sl_btmesh_on_node_provisioning_started(uint16_t result)
 void sl_btmesh_on_node_provisioned(uint16_t address,
                                    uint32_t iv_index)
 {
-  sl_status_t sc = sl_simple_timer_stop(&app_led_blinking_timer);
+  sl_status_t sc = app_timer_stop(&app_led_blinking_timer);
   app_assert_status_f(sc, "Failed to stop periodic timer\n");
   // Turn off LED
   init_done = true;
@@ -455,7 +462,7 @@ void sl_btmesh_on_node_provisioned(uint16_t address,
 /***************************************************************************//**
  * Timer Callbacks
  ******************************************************************************/
-static void app_led_blinking_timer_cb(sl_simple_timer_t *handle, void *data)
+static void app_led_blinking_timer_cb(app_timer_t *handle, void *data)
 {
   (void)data;
   (void)handle;

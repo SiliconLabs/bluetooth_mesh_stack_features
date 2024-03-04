@@ -1,4 +1,4 @@
-# Self Provisioning Example #
+# Self Provisioning Examples
 
 ## Description ##
 
@@ -10,11 +10,13 @@ This example is aimed to demonstrate how to set up a fully pre-configured Blueto
 
 ## Gecko SDK version ##
 
-GSDK v4.1.1
+GSDK v4.3.0 or newer
 
 ---
 
 ## Important
+
+> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -38,7 +40,7 @@ This project README assumes that the reader is familiar with the usage of Silico
   - Install the following components:
     - Bluetooth Mesh > Stack Classes > Test
 
-  <img src="images/install_test.png">
+  ![install_test](images/install_test.png)
 
   - When everything is configured, build and flash the projects
   - Create a new project based on the ```Bluetooth Mesh - SoC Switch``` example
@@ -49,7 +51,7 @@ This project README assumes that the reader is familiar with the usage of Silico
   - When everything is configured, build and flash the projects
   - If everything is fine, the nodes should quickly find each other and with the push buttons of the Switch node you may control the Light node
 
-  <img src="images/light_log.png">
-  <img src="images/switch_log.png">
+  ![light_log](images/light_log.png)
+  ![switch_log](images/switch_log.png)
 
 ---
