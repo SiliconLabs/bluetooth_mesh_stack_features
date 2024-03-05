@@ -8,11 +8,13 @@ The BLOB Transfer Model is still a working draft of a potential Bluetooth specif
 
 ## Gecko SDK version ##
 
-GSDK v4.2.1
+GSDK v4.4.1 or newer
 
 ---
 
 ## Important
+
+> ⚠ You are not required to follow through with the project setup part of the Instructions when using our *External Repos* feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -50,15 +52,15 @@ This project README assumes that the reader is familiar with the usage of Silico
     - Application > Utility > Log
     - Platform > Driver > GLIB Graphics Library
 
-  <img src="images/install_button_press.png">
+  ![install_button_press](images/install_button_press.png)
 
   - Add the Configuration Client Model in the Bluetooth Mesh Configurator to the Main Element (skipping this would result in SL_STATUS_BT_MESH_DOES_NOT_EXIST ((sl_status_t)0x0502))
  
-  <img src="images/add_config_client_model.png">
+  ![add_config_client_model](images/add_config_client_model.png)
 
   - Still in the Bluetooth Mesh Configurator, add a specific Vendor Model to the database (Company ID 0x1000, Model ID 0x2001), to be able to transfer the ID of the new BLOB to the Servers (these are perfectly arbitrary values, but hardcoded!)
  
-  <img src="images/add_vendor_model_1.png">
+  ![add_vendor_model_1](images/add_vendor_model_1.png)
 
   - Increase the field values meant to store the data for Provisioned Devices (0 by default) at Bluetooth Mesh > Stack > Bluetooth Mesh Stack as per your needs
     - Maximum number of provisioned devices allowed
@@ -67,21 +69,21 @@ This project README assumes that the reader is familiar with the usage of Silico
     - Max Foundation Client Cmds
       - For detailed explanation of these fields see: https://www.silabs.com/documents/public/user-guides/ug472-bluetooth-mesh-v2x-node-configuration-users-guide.pdf
 
-  <img src="images/increase_values_1.png">
-  <img src="images/increase_values_2.png">
+  ![increase_values_1](images/increase_values_1.png)
+  ![increase_values_2](images/increase_values_2.png)
 
   - Switch on the ```Enable Virtual COM UART``` option at Platform > Board > Board Control
 
-  <img src="images/enable_virtual_com.png">
+  ![enable_virtual_com](images/enable_virtual_com.png)
 
   - As the default configured system resources maybe scarce, if you receive the following error: ```080100a0```, consider increasing the Bluetooth stack buffer at Bluetooth > Stack > Bluetooth Core
 
-  <img src="images/buffer_memory_size.png">
+  ![buffer_memory_size](images/buffer_memory_size.png)
 
   - When everything is configured, build and flash the project
   - When it successfully boots up, it is going to create the Mesh network and starts to listen for the Server device advertisements
 
-  <img src="images/client_log_1.png">
+  ![client_log_1](images/client_log_1.png)
 
   - In the next step, create the project for the Server device based on the ```Bluetooth Mesh - SoC Empty``` example
   - Copy the following files into the root directory of your project, overwriting the already existing ones:
@@ -97,13 +99,13 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   - In the Bluetooth Mesh Configurator, add a specific Vendor Model to the database (Company ID 0x1000, Model ID 0x2000), to be able to receive the ID of the new BLOB (these are perfectly arbitrary values, but hardcoded!)
  
-  <img src="images/add_vendor_model_2.png">
+  ![add_vendor_model_2](images/add_vendor_model_2.png)
 
   - When everything is configured, build and flash the project
   - When the Server device goes online, it will instantly starts to advertise, and gets to be provisioned as soon as the Client notices it
 
-  <img src="images/server_log_1.png">
-  <img src="images/client_log_2.png">
+  ![server_log_1](images/server_log_1.png)
+  ![client_log_2](images/client_log_2.png)
 
   - To fully demonstrate the BLOB Transfer, lets update some data into the Client device. For this, you may have to disconnect with the Terminal software, as it is blocking the Serial port used for the image upload. You may upload any image you like, but keep in mind that it is going to be transformed into a 128x128 monochrome image, so details will be lost.
   - To upload the image, look up the serial port of the Client device and choose your image (or one of the two, in the script folder) and start the upload with ```python ./stream.py -p /dev/tty.usbmodem0004402253221 -i ./tree.png``` (this is a MacOS style naming, your serial port name might be different).

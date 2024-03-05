@@ -50,6 +50,9 @@ static GLIB_Context_t glibContext;
 // The advertising set handle allocated from Bluetooth stack.
 static uint8_t advertising_set_handle = 0xff;
 
+static const uint8_t vendor_model_elem_index = 0x0;
+static const uint8_t blob_server_model_elem_index = 0x0;
+
 static const uint8_t client_device_id[] = "ClientDevice";
 uint16_t data_id = 0;
 uint8_t data[2048];
@@ -115,8 +118,8 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
     case sl_bt_evt_system_boot_id:
       // Initialize Mesh stack in Node operation mode,
       // wait for initialized event
-      sc = sl_btmesh_node_init();
-      app_assert_status_f(sc, "Failed to init node");
+      //sc = sl_btmesh_node_init();
+      //app_assert_status_f(sc, "Failed to init node");
 
       bd_addr address;
       uint8_t address_type;
@@ -132,7 +135,7 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
                  address.addr[1],
                  address.addr[0]);
       break;
-    case sl_bt_evt_scanner_scan_report_id:
+    case sl_bt_evt_scanner_legacy_advertisement_report_id:
       /*app_log("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
               evt->data.evt_scanner_scan_report.address_type ? "static random" : "public device",
               evt->data.evt_scanner_scan_report.address.addr[5],
@@ -169,7 +172,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       app_log("node init\r\n");
 
       uint8_t opcodes[] = {0};
-      sc = sl_btmesh_vendor_model_init(0,
+      sc = sl_btmesh_vendor_model_init(vendor_model_elem_index,
                                        0x1000,
                                        0x2000,
                                        1,
@@ -185,8 +188,8 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       if (!evt->data.evt_node_initialized.provisioned) {
         // The Node is now initialized,
         // start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers
-        sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
+        //sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
+        //app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
         start_advertising();
       }
       break;
@@ -244,7 +247,8 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 
       blob_id.data[0] = evt->data.evt_vendor_model_receive.payload.data[0];
 
-      sc = sl_btmesh_blob_transfer_server_start(&blob_id,
+      sc = sl_btmesh_blob_transfer_server_start(blob_server_model_elem_index,
+                                                &blob_id,
                                                 10,
                                                 5);
       app_assert_status_f(sc, "sl_btmesh_blob_transfer_server_start failed\n");
@@ -268,10 +272,10 @@ void start_advertising() {
   sl_status_t sc;
   sc = sl_bt_advertiser_create_set(&advertising_set_handle);
   app_assert_status_f(sc, "sl_bt_advertiser_create_set failed");
-  sc = sl_bt_advertiser_set_data(advertising_set_handle,
-                                 0,
-                                 12,
-                                 client_device_id);
+  sc = sl_bt_legacy_advertiser_set_data(advertising_set_handle,
+                                        0,
+                                        12,
+                                        client_device_id);
   app_assert_status_f(sc, "sl_bt_advertiser_set_data failed");
 
   // Set advertising interval to 100ms.
@@ -284,8 +288,7 @@ void start_advertising() {
   app_assert_status_f(sc, "sl_bt_advertiser_set_timing failed");
 
   // Start advertising and enable connections.
-  sc = sl_bt_advertiser_start(advertising_set_handle,
-                              sl_bt_advertiser_user_data,
-                              sl_bt_advertiser_non_connectable);
+  sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
+                                     sl_bt_advertiser_non_connectable);
   app_assert_status_f(sc, "sl_bt_advertiser_start failed");
 }

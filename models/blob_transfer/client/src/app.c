@@ -68,6 +68,10 @@ static const uint16_t enc_netkey_index = 0x0;
 static const uint8_t fixed_netkey[16] = {0x23, 0x98, 0xdf, 0xa5, 0x09, 0x3e, 0x74, 0xbb, 0xc2, 0x45, 0x1f, 0xae, 0xea, 0xd7, 0x67, 0xcd};
 static const uint8_t fixed_appkey[16] = {0x16, 0x39, 0x38, 0x03, 0x9b, 0x8d, 0x8a, 0x20, 0x81, 0x60, 0xa7, 0x93, 0x33, 0x3d, 0x03, 0x61};
 
+static const uint8_t vendor_model_elem_index = 0x0;
+static const uint8_t blob_server_model_elem_index = 0x0;
+static const uint8_t blob_client_model_elem_index = 0x1;
+
 static uint16_t provisionee_addr;
 static uuid_128 provisionee_uuid;
 
@@ -192,14 +196,14 @@ SL_WEAK void app_process_action(void)
  *****************************************************************************/
 void sl_bt_on_event(struct sl_bt_msg *evt)
 {
-  sl_status_t sc;
+  //sl_status_t sc;
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_bt_evt_system_boot_id:
       // Init the device as provisioner
-      sc = sl_btmesh_prov_init();
-      app_assert_status_f(sc, "sl_btmesh_prov_init failed\r\n");
+      //sc = sl_btmesh_prov_init();
+      //app_assert_status_f(sc, "sl_btmesh_prov_init failed\r\n");
       break;
-    case sl_bt_evt_scanner_scan_report_id:
+    case sl_bt_evt_scanner_legacy_advertisement_report_id:
       /*app_log_debug("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
                     evt->data.evt_scanner_scan_report.address_type ? "static random" : "public device",
                     evt->data.evt_scanner_scan_report.address.addr[5],
@@ -209,15 +213,15 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
                     evt->data.evt_scanner_scan_report.address.addr[1],
                     evt->data.evt_scanner_scan_report.address.addr[0]);*/
       // We found a client device
-      if(!strcmp(client_device_id, (char*)evt->data.evt_scanner_scan_report.data.data)) {
+      if(!strcmp(client_device_id, (char*)evt->data.evt_scanner_legacy_advertisement_report.data.data)) {
         app_log("Client device noticed\r\n");
         for(uint8_t index = 0; index < CLIENT_LIMIT; index++) {
           // We already have this device in list
-          if(!memcmp(evt->data.evt_scanner_scan_report.address.addr, client_list[index].address.addr, sizeof(evt->data.evt_scanner_scan_report.address.addr))) break;
+          if(!memcmp(evt->data.evt_scanner_legacy_advertisement_report.address.addr, client_list[index].address.addr, sizeof(evt->data.evt_scanner_legacy_advertisement_report.address.addr))) break;
           // We found an empty space in the list
           if(!memcmp(empty_addr.addr, client_list[index].address.addr, sizeof(empty_addr.addr))) {
             // Add the newly-found device to our list
-              client_list[index].address = evt->data.evt_scanner_scan_report.address;
+              client_list[index].address = evt->data.evt_scanner_legacy_advertisement_report.address;
             break;
           }
           app_log_warning("client_list full\r\n");
@@ -271,7 +275,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
               evt->data.evt_prov_initialized.iv_index);
 
       uint8_t opcodes[] = {0};
-      sc = sl_btmesh_vendor_model_init(0,
+      sc = sl_btmesh_vendor_model_init(vendor_model_elem_index,
                                        0x1000,
                                        0x2001,
                                        1,
@@ -296,7 +300,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         app_log("Success, appkey id = %x\r\n", appkey_index);
       }
 
-      sc = sl_btmesh_test_bind_local_model_app(0,
+      sc = sl_btmesh_test_bind_local_model_app(blob_client_model_elem_index,
                                                appkey_index,
                                                0xFFFF,
                                                0x1401);
@@ -307,7 +311,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         app_log("Success, sl_btmesh_test_bind_local_model_app: 0x%x\r\n", 0x1401);
       }
 
-      sc = sl_btmesh_test_set_local_model_pub(0,
+      sc = sl_btmesh_test_set_local_model_pub(blob_client_model_elem_index,
                                               appkey_index,
                                               0xFFFF,
                                               0x1401,
@@ -323,7 +327,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         app_log("Success, sl_btmesh_test_set_local_model_pub: 0x%x\r\n", 0x1401);
       }
 
-      sc = sl_btmesh_test_bind_local_model_app(0,
+      sc = sl_btmesh_test_bind_local_model_app(vendor_model_elem_index,
                                                appkey_index,
                                                0x1000,
                                                0x2001);
@@ -334,7 +338,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         app_log("Success, sl_btmesh_test_bind_local_model_app: 0x%x\r\n", 0x2001);
       }
 
-      sc = sl_btmesh_test_set_local_model_pub(0,
+      sc = sl_btmesh_test_set_local_model_pub(vendor_model_elem_index,
                                               appkey_index,
                                               0x1000,
                                               0x2001,
@@ -409,7 +413,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       if(result == SL_STATUS_OK) {
         app_log(" appkey added\r\n");
 
-        sc = sl_btmesh_config_client_bind_model(enc_netkey_index, provisionee_addr, 0, 0x1000, 0x2000, appkey_index, &handle_bind_2000);
+        sc = sl_btmesh_config_client_bind_model(enc_netkey_index, provisionee_addr, vendor_model_elem_index, 0x1000, 0x2000, appkey_index, &handle_bind_2000);
         if (sc == SL_STATUS_OK) {
           app_log("sl_btmesh_config_client_bind_model to node 0x%4.4x\r\n", provisionee_addr);
         } else {
@@ -423,14 +427,14 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         app_log(" bind complete\r\n");
 
         if(evt->data.evt_config_client_binding_status.handle == handle_bind_2000) {
-          sc = sl_btmesh_config_client_add_model_sub(enc_netkey_index, provisionee_addr, 0, 0x1000, 0x2000, GRP_ADDR_BLOB_ID, &handle_sub_2000);
+          sc = sl_btmesh_config_client_add_model_sub(enc_netkey_index, provisionee_addr, vendor_model_elem_index, 0x1000, 0x2000, GRP_ADDR_BLOB_ID, &handle_sub_2000);
           if (sc == SL_STATUS_OK) {
             app_log(" waiting sub ack\r\n");
           } else {
             app_log("sl_btmesh_config_client_add_model_sub addr %x, error: %lx\r\n", provisionee_addr, sc);
           }
         } else {
-          sc = sl_btmesh_config_client_add_model_sub(enc_netkey_index, provisionee_addr, 0, 0xFFFF, 0x1400, GRP_ADDR_BLOB, &handle_sub_1400);
+          sc = sl_btmesh_config_client_add_model_sub(enc_netkey_index, provisionee_addr, blob_server_model_elem_index, 0xFFFF, 0x1400, GRP_ADDR_BLOB, &handle_sub_1400);
           if (sc == SL_STATUS_OK) {
             app_log(" waiting sub ack\r\n");
           } else {
@@ -446,7 +450,7 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       if(result == SL_STATUS_OK) {
         if(evt->data.evt_config_client_binding_status.handle == handle_sub_2000) {
           app_log(" sub add OK\r\n");
-          sc = sl_btmesh_config_client_bind_model(network_id, provisionee_addr, 0, 0xFFFF, 0x1400, appkey_index, &handle_bind_1400);
+          sc = sl_btmesh_config_client_bind_model(network_id, provisionee_addr, blob_server_model_elem_index, 0xFFFF, 0x1400, appkey_index, &handle_bind_1400);
           if (sc == SL_STATUS_OK) {
             app_log("sl_btmesh_config_client_bind_model to node 0x%4.4x\r\n", provisionee_addr);
           } else {
@@ -509,7 +513,7 @@ void send_image() {
 
   sl_status_t sc;
 
-  sc = sl_btmesh_blob_transfer_client_setup(0,
+  sc = sl_btmesh_blob_transfer_client_setup(blob_client_model_elem_index,
                                             blob_id,
                                             2048,
                                             appkey_index,
@@ -524,14 +528,14 @@ void send_image() {
 
   app_log("sl_btmesh_blob_transfer_client_setup done\r\n");
 
-  sc = sl_btmesh_blob_transfer_client_setup_data_provider_array(0,
+  sc = sl_btmesh_blob_transfer_client_setup_data_provider_array(blob_client_model_elem_index,
                                                                 data,
                                                                 2048);
   app_assert_status_f(sc, "sl_btmesh_blob_transfer_client_setup_data_provider_array failed");
 
   app_log("sl_btmesh_blob_transfer_client_setup_data_provider_array done\r\n");
 
-  sc = sl_btmesh_blob_transfer_client_start(0,
+  sc = sl_btmesh_blob_transfer_client_start(blob_client_model_elem_index,
                                             sl_btmesh_mbt_client_mbt_transfer_mode_both,
                                             handle_blob_transfer_client_notification);
   app_assert_status_f(sc, "sl_btmesh_blob_transfer_client_start failed");
@@ -545,7 +549,7 @@ void send_blob_id() {
   sc = sl_btmesh_vendor_model_send_tracked(provisionee_addr,
                                            0,
                                            appkey_index,
-                                           0,
+                                           vendor_model_elem_index,
                                            0x1000,
                                            0x2001,
                                            0,
