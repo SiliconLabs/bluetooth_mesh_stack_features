@@ -1,0 +1,99 @@
+project_name: btmesh_soc_vendor_client
+package: Btmesh
+label: Bluetooth Mesh - SoC Vendor Client
+description: >
+  This example aims at helping those developers who want to use the vendor specific models in their Bluetooth Mesh products.
+
+category: Bluetooth Mesh Examples
+quality: development
+
+filter:
+  - name: "Wireless Technology"
+    value: ["Bluetooth Mesh"]
+  - name: "Device Type"
+    value: ["SoC"]
+  - name: "Project Difficulty"
+    value: ["Beginner"]
+
+component:
+  - id: app_assert
+  - id: app_log
+  - id: bootloader_interface
+  - id: app_button_press
+  - id: btmesh_stack_gatt_prov_bearer
+  - id: btmesh_stack_node
+  - id: btmesh_stack_relay
+  - id: btmesh_proxy
+  - id: btmesh_stack
+  - id: btmesh_stack_test
+  - id: iostream_usart
+    instance:
+      - vcom
+  - id: mpu
+  - id: btmesh_stack_vendor_model
+  - id: rail_util_pti
+  - id: app_timer
+
+source:
+  - path: ../client/src/app.c
+  - path: ../client/src/main.c
+
+include:
+  - path: ../client/inc/
+    file_list:
+    - path: app.h
+    - path: my_model_def.h
+
+config_file:
+  - override:
+      component: btmesh_dcd_configuration
+      file_id: dcd_configuration_file_id
+    path: ../client/config/dcd_config.btmeshconf
+    directory: btmeshconf
+
+readme:
+  - path: ../README.md
+
+other_file:
+  - path: ../images/reliable_get_flow.png
+    directory: images
+  - path: ../images/reliable_set_flow.png
+    directory: images
+  - path: ../images/unreliable_set_flow.png
+    directory: images
+  - path: ../images/vendor_client_terminal.png
+    directory: images
+  - path: ../images/vendor_server_terminal.png
+    directory: images
+
+configuration:
+  - name: NVM3_DEFAULT_NVM_SIZE
+    value: "0x6000"
+  - name: SL_BOARD_ENABLE_VCOM
+    value: "1"
+    condition:
+      - "iostream_usart"
+  - name: SL_BTMESH_CONFIG_MAX_PROV_BEARERS
+    value: "3"
+  - name: SL_HEAP_SIZE
+    value: "0x4000"
+  - name: SL_PSA_KEY_USER_SLOT_COUNT
+    value: "0"
+    condition:
+      - psa_crypto
+  - name: SL_STACK_SIZE
+    value: "0x1200"
+
+tag:
+  - hardware:device:flash:512
+  - hardware:device:ram:32
+  - hardware:rf:band:2400
+
+ui_hints:
+  highlight:
+    - path: config/btconf/gatt_configuration.btconf
+      focus: false
+    - path: config/btmeshconf/dcd_config.btmeshconf
+      focus: false
+    - path: readme.md
+      focus: true
