@@ -4,7 +4,7 @@
 
 This example demonstrates mesh models capable of transferring binary large objects, called BLOBs, over a Bluetooth mesh network. The BLOB Transfer Server model and BLOB Transfer Client model are used to transport data for a higher-layer application. BLOB transfer is the process of sending a BLOB from a BLOB Transfer Client model to one or more BLOB Transfer Server models. BLOB transfer is able to transfer data objects that are much larger than the maximum Access Layer PDU size. BLOB transfer supports multicasting of the BLOB to many nodes simultaneously.
 
-The BLOB Transfer Model is still a working draft of a potential Bluetooth specification at the time of writing this Readme. It is subject to change and Bluetooth SIG is not required to finalize or adopt it. Silicon Labs implements these Models to provide Device Firmware Update via the Mesh network and this example is aimed to demonstrate other possible uses of these Models. 
+The BLOB Transfer Model is still a working draft of a potential Bluetooth specification at the time of writing this Readme. It is subject to change and Bluetooth SIG is not required to finalize or adopt it. Silicon Labs implements these Models to provide Device Firmware Update via the Mesh network and this example is aimed to demonstrate other possible uses of these Models.
 
 ## Gecko SDK version ##
 
@@ -23,16 +23,12 @@ This project README assumes that the reader is familiar with the usage of Silico
 ## Requirements
 
   - Simplicity Studio 5 with the latest GSDK
-  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4186C)
+  - At least 2x SiliconLabs WSTK with Radio Boards (for example BRD4186C)
   - Python3 environment with the followings installed via ```pip```:
     - ffmpegio
     - pillow
     - numpy
     - serial
-
-## How it works
-
-
 
 ## Instructions
 
@@ -101,15 +97,15 @@ This project README assumes that the reader is familiar with the usage of Silico
  
   ![add_vendor_model_2](images/add_vendor_model_2.png)
 
-  - When everything is configured, build and flash the project
-  - When the Server device goes online, it will instantly starts to advertise, and gets to be provisioned as soon as the Client notices it
+  - When everything is configured, build and flash the project (to one or more devices)
+  - When the Server device goes online, it will instantly starts to advertise, and gets to be provisioned as soon as the Client notices it (this can take some time)
 
   ![server_log_1](images/server_log_1.png)
   ![client_log_2](images/client_log_2.png)
 
   - To fully demonstrate the BLOB Transfer, lets update some data into the Client device. For this, you may have to disconnect with the Terminal software, as it is blocking the Serial port used for the image upload. You may upload any image you like, but keep in mind that it is going to be transformed into a 128x128 monochrome image, so details will be lost.
-  - To upload the image, look up the serial port of the Client device and choose your image (or one of the two, in the script folder) and start the upload with ```python ./stream.py -p /dev/tty.usbmodem0004402253221 -i ./tree.png``` (this is a MacOS style naming, your serial port name might be different).
-  - When the image appears on the Client LCD, reconnect with the Terminal software (to see the progress) to the CLient and by pressing ```Button 0``` for at least 3 seconds, the stored image will be transferred to all connected Servers.
+  - To upload the image, look up the serial port of the Client device and choose your image (or one of the two, in the script folder) and start the upload with ```python ./stream.py -p /dev/tty.usbmodem0004402253221 -i ./tree.png``` (this is a macOS style naming, your serial port name might be different).
+  - When the image appears on the Client LCD, reconnect with the Terminal software (to see the progress) to the CLient and by pressing ```Button 0``` for approximately 3 seconds, the stored image will be transferred to all connected Servers.
   - Fun fact: You may stream short videos (hence the ffmpgeio library) via the serial port to the Client device with the ```./stream.py -v``` switch, but the transport is too slow, to do this via the Mesh network.
 
 ---

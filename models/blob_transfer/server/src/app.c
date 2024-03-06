@@ -38,7 +38,14 @@
 #include "glib.h"
 #include "dmd.h"
 
+/* Buttons and LEDs headers */
+#include "sl_simple_button_instances.h"
+
 #include "sl_btmesh_blob_transfer_server.h"
+
+#ifdef SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
+#include "sl_btmesh_factory_reset.h"
+#endif // SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
 
 /// Advertising Provisioning Bearer
 #define PB_ADV                         0x1
@@ -59,6 +66,13 @@ uint8_t data[2048];
 
 sl_bt_uuid_64_t blob_id = {{0}};
 
+/***************************************************************************//**
+ * Handles button press and does a factory reset
+ *
+ * @return true if there is no button press
+ ******************************************************************************/
+static bool handle_reset_conditions(void);
+
 /*******************************************************************************
  * Application Init.
  ******************************************************************************/
@@ -69,6 +83,7 @@ SL_WEAK void app_init(void)
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
   app_log("boot\r\n");
+  handle_reset_conditions();
   uint32_t status;
 
   /* Enable the memory lcd */
@@ -103,6 +118,33 @@ SL_WEAK void app_process_action(void)
   // This is called infinitely.                                              //
   // Do not call blocking functions from here!                               //
   /////////////////////////////////////////////////////////////////////////////
+}
+
+/*******************************************************************************
+ * Handles button press and does a factory reset
+ ******************************************************************************/
+static bool handle_reset_conditions(void)
+{
+#ifdef SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
+  // If PB0 is held down then do full factory reset
+  if (sl_simple_button_get_state(&sl_button_btn0)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Full factory reset
+    sl_btmesh_initiate_full_reset();
+    return false;
+  }
+
+#if SL_SIMPLE_BUTTON_COUNT >= 2
+  // If PB1 is held down then do node factory reset
+  if (sl_simple_button_get_state(&sl_button_btn1)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Node factory reset
+    sl_btmesh_initiate_node_reset();
+    return false;
+  }
+#endif // SL_CATALOG_BTN1_PRESENT
+#endif // SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
+  return true;
 }
 
 /**************************************************************************//**
