@@ -86,7 +86,7 @@ void sl_btmesh_change_lightness(int8_t change_percentage)
   if (lightness_percent != 0) {
     lightness_percent_switch_on = lightness_percent;
   }
-  sl_btmesh_set_lightness(lightness_percent);
+  sl_btmesh_ctl_client_set_lightness(lightness_percent);
 }
 
 
@@ -121,5 +121,5 @@ void sl_btmesh_change_temperature(int8_t change_percentage)
     }
   }
 
-  sl_btmesh_set_temperature(temperature_percent);
+  sl_btmesh_ctl_client_set_temperature(temperature_percent);
 }
