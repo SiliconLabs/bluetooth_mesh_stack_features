@@ -10,13 +10,13 @@ This example is aimed to demonstrate our Mesh library's capabilities in building
 
 ## Gecko SDK version ##
 
-GSDK v4.3.1
+GSDK v4.4.1
 
 ---
 
 ## Important
 
-> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our *External Repos* feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -42,6 +42,7 @@ This project README assumes that the reader is familiar with the usage of Silico
   - Copy the following files into the root directory of your project, overwrite the already existing ones:
     - app.c/h
     - config.c/h
+    - btmesh_change.c/h
   - Install the following components:
     - Application > Utility > Button Press
     - Bluetooth Mesh > Stack Classes > Test
@@ -68,8 +69,12 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   - When everything is configured, build and flash the project
   - Flash the other board with ```Bluetooth Mesh - SoC Light``` example project
-  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 0``` for more then 5 seconds on the Provisioner device, you can provision the newly noticed device into your network. If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node. After you get to ```configuration complete```, you should be able to control the LEDs of the Node device with the buttons of the Provisioner device.
+  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by pressing ```Button 0``` for more then 10 seconds on the Provisioner device, you can provision the newly noticed device into your network. If the provisioning is successful, the Provisioner will extract the DCD informations from the new Node. After you get to ```configuration complete```, you should be able to control the LEDs of the Node device with the buttons of the Provisioner device.
 
   ![dcd_infos](images/dcd_infos.png)
+
+  - By pressing ```Button 1``` instead of ```Button 0``` for more then 10 seconds, you can list all the unprovisioned Nodes noticed so far, and selectively provision one of them.
+
+  ![node_selection](images/node_selection.png)
 
 ---

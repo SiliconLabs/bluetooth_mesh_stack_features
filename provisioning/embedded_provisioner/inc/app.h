@@ -4,7 +4,7 @@
  * Embedded provisioner.
  *******************************************************************************
  * # License
- * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2024 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -40,11 +40,19 @@
 /* System header */
 #include <stdio.h>
 
+#include "sl_bluetooth.h"
+
 /* Provisioning strategy */
 typedef enum {
   eMESH_PROV_ALL=0,
   eMESH_PROV_NEXT
 } eMesh_Prov_Node_t;
+
+typedef struct {
+  bd_addr address;
+  uuid_128 uuid;
+  uint8_t is_provisioned;
+} device_table_entry_t;
 
 /***************************************************************************//**
  * Application Init.
@@ -56,24 +64,16 @@ void app_init(void);
  ******************************************************************************/
 void app_process_action(void);
 
-/***************************************************************************//**
- * Shows the provisioning start information
- ******************************************************************************/
-void app_show_btmesh_node_provisioning_started(uint16_t result);
+void init_bluetooth_device_table();
 
-/***************************************************************************//**
- * Shows the provisioning completed information
- ******************************************************************************/
-void app_show_btmesh_node_provisioned(uint16_t address,
-                                      uint32_t iv_index);
+void provision_bluetooth_device(device_table_entry_t *device);
 
-/* Initialize the stack */
-void initBLEMeshStack_app(void);
+void select_bluetooth_device(eMesh_Prov_Node_t eStrategy);
 
-/* BLE stack device state machine */
-void bkgndBLEMeshStack_app(void);
+void print_bluetooth_device_table();
 
-/* provision list */
-void provisionBLEMeshStack_app(eMesh_Prov_Node_t eStrategy);
+void app_button_press_select_provisionee_cb(uint8_t button, uint8_t duration);
+
+void app_button_press_cb(uint8_t button, uint8_t duration);
 
 #endif
