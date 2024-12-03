@@ -24,7 +24,7 @@ This project README assumes that the reader is familiar with the usage of Silico
 
 ## Requirements
 
-  - Simplicity Studio 5 with the latest GSDK
+  - Simplicity Studio 5 with the latest SiSDK
   - 2x SiliconLabs WSTK with Radio Boards (for example BRD4162A)
 
 ## Known limitations:
@@ -37,7 +37,7 @@ This project README assumes that the reader is familiar with the usage of Silico
 
 ## Instructions
 
-  - This Example is based on the ```Bluetooth Mesh - SoC Light CTL``` included with the Silicon Labs GSDK
+  - This Example is based on the ```Bluetooth Mesh - SoC Light CTL``` included with the Silicon Labs SiSDK
   - Create a new project based on the ```Bluetooth Mesh - SoC Light CTL``` example
   - Copy the following files into the root directory of your project, overwrite the already existing ones:
     - app.c/h
