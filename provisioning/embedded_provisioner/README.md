@@ -8,7 +8,7 @@ Provisioning is the process of adding a new, unprovisioned device to a Bluetooth
 
 This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device and extracting the Device Composition Database data from the freshly provisioned node. The project also contains a Lightness/CTL Client implementation with all the necessary publish/subscribe configurations to be able to successfully control our ```Bluetooth Mesh - SoC Light CTL``` example.
 
-## Gecko SDK version ##
+## Simplicity SDK version ##
 
 SiSDK v2024.6.0
 
