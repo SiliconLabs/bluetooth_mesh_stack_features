@@ -25,7 +25,7 @@ This project README assumes that the reader is familiar with the usage of Silico
 ## Requirements
 
   - Simplicity Studio 5 with the latest SiSDK
-  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4162A)
+  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4187C)
 
 ## Known limitations:
 
