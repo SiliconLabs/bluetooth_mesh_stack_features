@@ -32,6 +32,7 @@
 #define APP_H
 
 #include <stdint.h>
+#include <getopt.h>
 #include "sl_btmesh_api.h"
 
 #ifdef __cplusplus
@@ -39,19 +40,31 @@ extern "C" {
 #endif
 
 /// Default netkey index
-#define APP_NETKEY_IDX              0
+#define APP_NETKEY_IDX                0
 /// UUID length in AABBCCDD format
-#define UUID_LEN_WITHOUT_SEPARATORS 32
+#define UUID_LEN_WITHOUT_SEPARATORS   32
 /// UUID length in AA:BB:CC:DD format
-#define UUID_LEN_WITH_SEPARATORS    47
+#define UUID_LEN_WITH_SEPARATORS      47
 /// Address length in 1234 format
-#define ADDRESS_LEN_WITHOUT_PREFIX  4
+#define ADDRESS_LEN_WITHOUT_PREFIX    4
 /// Address length in 0x1234 format
-#define ADDRESS_LEN_WITH_PREFIX     6
+#define ADDRESS_LEN_WITH_PREFIX       6
 /// 2 seconds timer for provisioner reset
-#define RESET_TIMER_MS              2000
+#define RESET_TIMER_MS                2000
 /// 5 seconds timer for scanning unprovisioned devices
-#define SCAN_TIMER_MS               5000
+#define SCAN_TIMER_MS                 5000
+/// 5 seconds timer for remote scanning unprovisioned devices
+#define REMOTE_PROV_SCANNING_TIMEOUT  (uint8_t)5
+/// Attention timer value, in seconds
+#define REMOTE_PROV_ATTENTION_TIMER   (uint8_t)0
+/// Default phase timeout for key refresh in seconds used in UI mode
+#define DEFAULT_PHASE_TIMEOUT_S 120
+/// Advertising Provisioning Bearer
+#define HOST_PROV_PB_ADV              0x1
+/// GATT Provisioning Bearer
+#define HOST_PROV_PB_GATT             0x2
+/// Remote Provisioning Bearer
+#define HOST_PROV_PB_REMOTE           0x3
 
 typedef enum command_e{
   NONE,
@@ -61,43 +74,37 @@ typedef enum command_e{
   NODEINFO,
   REMOVE_NODE,
   EXCLUDE_NODE,
-  RESET
+  KEY_REFRESH,
+  KEY_EXPORT,
+  RESET,
+  REMOTE_SERVERLIST,
+  REMOTE_SCAN,
+  REMOTE_PROVISION
 } command_t;
 
 typedef enum command_state_e{
   INIT,
   START,
   IN_PROGRESS,
-  FINISHED,
-  UI_START,
-  UI_INPUT,
-  UI_IN_PROGRESS,
-  UI_FINISHED
+  FINISHED
 } command_state_t;
 
-/**************************************************************************/ /**
+/**************************************************************************//**
  * Application Init.
- ******************************************************************************/
+ *****************************************************************************/
 void app_init(int argc, char *argv[]);
 
-/**************************************************************************/ /**
+/**************************************************************************//**
  * Application Process Action.
- ******************************************************************************/
+ *****************************************************************************/
 void app_process_action(void);
 
-/***************************************************************************/ /**
- * BT Mesh event handler in UI mode
- *
- * @param[in] evt Received BT Mesh event
- ******************************************************************************/
-void app_ui_on_event(sl_btmesh_msg_t *evt);
-
-/**************************************************************************/ /**
+/**************************************************************************//**
  * Application Deinit.
- ******************************************************************************/
+ *****************************************************************************/
 void app_deinit(void);
 
-/***************************************************************************/ /**
+/***************************************************************************//**
  * Callback to inform when the node configuration process ends
  *
  * @param[in] netkey_index Netkey index of the configured node
@@ -106,22 +113,7 @@ void app_deinit(void);
 void app_on_node_configuration_end(uint16_t netkey_index,
                                    uint16_t server_address);
 
-/***************************************************************************/ /**
- * Callback to inform when the node configuration process ends in UI mode
- *
- * @param[in] netkey_index Netkey index of the configured node
- * @param[in] server_address Primary subnet address of the configured node
- ******************************************************************************/
-void app_ui_on_node_configuration_end(uint16_t netkey_index,
-                                      uint16_t server_address);
-
-/***************************************************************************/ /**
- * Callback to inform when the nodeinfo query ends
- *
- ******************************************************************************/
-void app_on_nodeinfo_end(void);
-
-/***************************************************************************/ /**
+/***************************************************************************//**
  * Parse UUID from the given string
  *
  * @param[in] input The string to parse
@@ -130,7 +122,7 @@ void app_on_nodeinfo_end(void);
  ******************************************************************************/
 void app_parse_uuid(char *input, size_t length, uuid_128 *parsed_uuid);
 
-/***************************************************************************/ /**
+/***************************************************************************//**
  * Parse primary element address from the given string
  *
  * @param[in] input The string to parse
@@ -139,79 +131,51 @@ void app_parse_uuid(char *input, size_t length, uuid_128 *parsed_uuid);
  ******************************************************************************/
 void app_parse_address(char *input, size_t length, uint16_t *address);
 
-/***************************************************************************/ /**
- * Callback to inform when the nodeinfo query ends in UI mode
+/**************************************************************************//**
+ * Callback to inform about provisioning failed event
  *
- ******************************************************************************/
-void app_ui_on_nodeinfo_end(void);
+ *******************************************************************************/
+void btmesh_app_on_provision_failed(void);
 
-/***************************************************************************/ /**
- * Set both the current command and command state
+/**************************************************************************//**
+ * Callback to inform about configuration end event
  *
- * @param[in] new_command The new requested command
- * @param[in] new_state The new requested state
- ******************************************************************************/
-void set_command_and_state(command_t new_command, command_state_t new_state);
+ *******************************************************************************/
+void btmesh_app_on_node_configuration_end(void);
 
-/***************************************************************************/ /**
- * Handle the main menu in UI mode
+/**************************************************************************//**
+ * Callback to copy options array
  *
- ******************************************************************************/
-void handle_ui(void);
+ * @param[out] long_options Destination addres for options array
+ *******************************************************************************/
+void btmesh_app_on_build_cmd_options(struct option *long_options);
 
-/***************************************************************************/ /**
- * Handle scan functionality in UI mode
+/**************************************************************************//**
+ * Callback to copy options array for CBP
  *
- ******************************************************************************/
-void handle_ui_scan(void);
+ * @param[out] long_options Destination addres for options array
+ *******************************************************************************/
+void btmesh_cbp_on_build_cmd_options(struct option *long_options);
 
-/***************************************************************************/ /**
- * Handle provision functionality in UI mode
+/**************************************************************************//**
+ * Callback to check unknown command options
  *
- ******************************************************************************/
-void handle_ui_provision(void);
+ * @param[in] cmd_opt Command option
+ * @param[in] cmd_optarg Command argument
+ * @retval SL_STATUS_OK if command option was recognized
+ *         SL_STATUS_NOT_FOUND if command is unknown
+ *******************************************************************************/
+sl_status_t btmesh_app_on_check_cmd_options(int cmd_opt, char *cmd_optarg);
 
-/***************************************************************************/ /**
- * Handle nodelist functionality in UI mode
+/**************************************************************************//**
+ * Callback to check CBP-related command options
  *
- ******************************************************************************/
-void handle_ui_nodelist(void);
-
-/***************************************************************************/ /**
- * Handle nodeinfo functionality in UI mode
- *
- ******************************************************************************/
-void handle_ui_nodeinfo(void);
-
-/***************************************************************************/ /**
- * Handle remove functionality in UI mode
- *
- ******************************************************************************/
-void handle_ui_remove(void);
-
-/***************************************************************************/ /**
- * Handle exclude functionality in UI mode
- *
- ******************************************************************************/
-void handle_ui_exclude(void);
-
-/***************************************************************************/ /**
- * Handle reset functionality in UI mode
- *
- ******************************************************************************/
-void handle_ui_reset(void);
-
-/***************************************************************************/ /**
- * Callback to inform when the DDB list is ready in UI mode
- *
- ******************************************************************************/
-void btmesh_prov_on_ddb_list_ready_ui(void);
-
-/***************************************************************************/ /**
- * Callback to inform when provision failed in UI mode
- *
- ******************************************************************************/
-void btmesh_prov_on_provision_failed_evt_ui(void);
+ * @param[in] cmd_opt Command option
+ * @param[in] cmd_optarg Command argument
+ * @retval SL_STATUS_OK if command option was recognized
+ *         SL_STATUS_NOT_FOUND if command is unknown
+ *******************************************************************************/
+sl_status_t btmesh_cbp_on_check_cmd_options(int cmd_opt, char *cmd_optarg);
 
 #ifdef __cplusplus
 };

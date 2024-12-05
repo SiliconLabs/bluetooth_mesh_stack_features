@@ -2,14 +2,18 @@
 # General project settings                                                     #
 ################################################################################
 
-PROJECTNAME ?= btmesh_host_provisioner
-SDK_DIR ?= ../../../..
+PROJECTNAME = btmesh_host_provisioner
+SDK_DIR = ../../../..
 
 # Disable threading as handling more than a few mesh devices can cause data loss
 HOST_THREADING = 0
 
 # Still add pthread because user input handling uses it
 override LDFLAGS += -pthread
+
+# SL_CATALOG_APP_PROV_PRESENT flag indicates host provisioner application component present
+override CFLAGS += -D SL_CATALOG_APP_PROV_PRESENT
+
 
 ################################################################################
 # Components                                                                   #
@@ -22,12 +26,13 @@ include $(SDK_DIR)/app/bluetooth/component_host/toolchain.mk
 include $(SDK_DIR)/app/bluetooth/component_host/app_log.mk
 include $(SDK_DIR)/app/bluetooth/component_host/app_assert.mk
 include $(SDK_DIR)/app/bluetooth/component_host/app_signal.mk
+include $(SDK_DIR)/app/bluetooth/component_host/app_timer.mk
+include $(SDK_DIR)/app/bluetooth/component_host/ncp_reset.mk
+include $(SDK_DIR)/app/bluetooth/component_host/ncp_version.mk
 include $(SDK_DIR)/app/btmesh/component_host/ncp_host_btmesh.mk
-include $(SDK_DIR)/app/btmesh/component_host/btmesh_db.mk
+include $(SDK_DIR)/app/btmesh/component_host/btmesh_key_export.mk
 include $(SDK_DIR)/app/btmesh/component_host/btmesh_prov.mk
 include $(SDK_DIR)/app/btmesh/component_host/btmesh_conf.mk
-include $(SDK_DIR)/app/bluetooth/component_host/slist.mk
-include $(SDK_DIR)/app/bluetooth/component_host/app_timer.mk
 
 
 ################################################################################
@@ -52,9 +57,9 @@ $(SDK_DIR)/app/bluetooth/common_host/system/system.c \
 $(SDK_DIR)/app/bluetooth/common_host/system/sl_btmesh.c \
 app.c \
 app_conf.c \
-app_ui.c \
+btmesh_app_prov.c \
+btmesh_app_prov_ui.c \
 main.c
-
 
 ################################################################################
 # Target rules                                                                 #

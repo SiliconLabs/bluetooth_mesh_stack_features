@@ -75,9 +75,9 @@ sl_status_t app_conf_start_node_configuration(uint16_t netkey_index,
  * queried first and it is printed afterwards otherwise the node information is
  * printed based on the cached data.
  *
- * The @ref app_on_nodeinfo_end and @ref app_ui_on_nodeinfo_end functions are
- * called when the node information procedure ends to notify the main application
- * logic.
+ * The @ref btmesh_app_prov_on_nodeinfo_end and @ref app_ui_on_nodeinfo_end
+ * functions are called when the node information procedure ends to notify the
+ * main application logic.
  ******************************************************************************/
 void app_conf_print_nodeinfo_by_addr(uint16_t server_address);
 
@@ -90,9 +90,9 @@ void app_conf_print_nodeinfo_by_addr(uint16_t server_address);
  * queried first and it is printed afterwards otherwise the node information is
  * printed based on the cached data.
  *
- * The @ref app_on_nodeinfo_end and @ref app_ui_on_nodeinfo_end functions are
- * called when the node information procedure ends to notify the main application
- * logic.
+ * The @ref btmesh_app_prov_on_nodeinfo_end and @ref app_ui_on_nodeinfo_end
+ * functions are called when the node information procedure ends to notify the
+ * main application logic.
  ******************************************************************************/
 void app_conf_print_nodeinfo_by_uuid(uuid_128 uuid);
 
@@ -105,9 +105,9 @@ void app_conf_print_nodeinfo_by_uuid(uuid_128 uuid);
  * queried first and it is printed afterwards otherwise the node information is
  * printed based on the cached data.
  *
- * The @ref app_on_nodeinfo_end and @ref app_ui_on_nodeinfo_end functions are
- * called when the node information procedure ends to notify the main application
- * logic.
+ * The @ref btmesh_app_prov_on_nodeinfo_end and @ref app_ui_on_nodeinfo_end
+ * functions are called when the node information procedure ends to notify the
+ * main application logic.
  ******************************************************************************/
 void app_conf_print_nodeinfo_by_id(uint16_t id);
 
