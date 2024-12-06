@@ -121,5 +121,5 @@ void sl_btmesh_change_temperature(int8_t change_percentage)
     }
   }
 
-  sl_btmesh_set_temperature(temperature_percent);
+  sl_btmesh_ctl_client_set_temperature(temperature_percent);
 }

@@ -10,15 +10,15 @@ The out of band (OOB) association model is designed for scenarios where an out o
 
 This example is aimed to demonstrate our Mesh library's capabilities in building an embedded provisioner device with out of band authentication and extracting the Device Composition Database data from the freshly provisioned node. The example also contains the necessary codes for a node to-be provisioned (provisionee) with the OOB support, required for the full demonstration.
 
-## Gecko SDK version ##
+## Simplicity SDK version ##
 
-GSDK v4.3.1
+SiSDK v2024.6.0
 
 ---
 
 ## Important
 
-> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our [*External Repos*](../../README.md) feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -39,15 +39,15 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   - The example contains files for two separate projects, both for Provisioner and Provisionee nodes, placed in the appropriately named folders
   - For the Provisioner, please follow the instructions, found in the Embedded Provisioner Example, except:
-  - Copy the following file into the root directory of your project, overwriting the already existing one:
-    - app.c
+    - Copy the following file into the root directory of your project, overwriting the already existing one:
+      - provisioner/src/app.c
   - For the Provisionee, please, see below:
-  - Create a new project based on the ```Bluetooth Mesh - SoC Switch``` example
-  - Copy the following file into the root directory of your project, overwriting the already existing one:
-    - app.c
-  - When everything is configured, build and flash the projects
-  - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by long pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network.
-  - After the provisioning started, you have 5 seconds (adjustable with the ```APP_OOB_COUNTER_TIMEOUT```) to enter the OOB ```AuthValue``` into the Provisionee node with the ```Button 1``` pushbutton.
+    - Create a new project based on the ```Bluetooth Mesh - SoC Switch CTL``` example
+    - Copy the following file into the root directory of your project, overwriting the already existing one:
+      - provisionee/src/app.c
+    - When everything is configured, build and flash the projects
+    - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by long pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network.
+    - After the provisioning started, you have 5 seconds (adjustable with the ```APP_OOB_COUNTER_TIMEOUT```) to enter the OOB ```AuthValue``` into the Provisionee node with the ```Button 1``` pushbutton.
 
   ![oob_authvalue](images/oob_authvalue.png)
   ![oob_input](images/oob_input.png)

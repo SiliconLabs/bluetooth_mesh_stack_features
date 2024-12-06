@@ -267,27 +267,12 @@ bool handle_reset_conditions(void)
 static void handle_boot_event(void)
 {
   sl_status_t sc;
-  char buf[BOOT_ERR_MSG_BUF_LEN];
   uuid_128 uuid;
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    sc = sl_btmesh_node_init_oob(0,
-                                 (sl_btmesh_node_auth_method_flag_static|sl_btmesh_node_auth_method_flag_output),
-                                 sl_btmesh_node_oob_output_action_flag_blink,
-                                 8,
-                                 sl_btmesh_node_oob_input_action_flag_push,
-                                 8,
-                                 0xBEEF /* device capabilities */ );
-    if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
-      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%lx)\r\n", sc);
-    } else {
-      sc = sl_btmesh_node_get_uuid(&uuid);
-      app_assert_status_f(sc, "Failed to get UUID\n");
-      set_device_name(&uuid);
-    }
+    sc = sl_btmesh_node_get_uuid(&uuid);
+    app_assert_status_f(sc, "Failed to get UUID\n");
+    set_device_name(&uuid);
   }
 }
 

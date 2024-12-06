@@ -39,6 +39,7 @@
 
 /* System header */
 #include <stdio.h>
+#include <stdint.h>
 
 /* Provisioning strategy */
 typedef enum {
