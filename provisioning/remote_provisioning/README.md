@@ -10,24 +10,24 @@ This example demonstrates the Remote Provisioning feature of the Silicon Labs Me
 
 ![remote_provisioning](images/remote_provisioning.png)
 
-## Gecko SDK version ##
+## Simplicity SDK version ##
 
-GSDK v4.3.1
+SiSDK v2024.6.0
 
 ---
 
 ## Important
 
-> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our [*External Repos*](../../README.md) feature!
 
-This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it. These examples are designed to be able to run on such low capability devices as an MG12, but keep the memory consumption in check.
+This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it. These examples are designed to be able to run on such low capability devices as an xG22, but keep the memory consumption in check.
 
 ---
 
 ## Requirements
 
   - Simplicity Studio 5 with the latest GSDK
-  - 3x SiliconLabs WSTK with Radio Boards (for example BRD4161A)
+  - 3x SiliconLabs WSTK with Radio Boards (for example BRD4187C)
 
 ## How it works
 
@@ -42,6 +42,7 @@ The way how this example is structured is aimed to demonstrate and ease the unde
   - Install the following components:
     - Application > Utility > Button Press
     - Bluetooth Mesh > Stack > Provisioner
+    - Bluetooth Mesh > Btmesh Roles > Btmesh Provisioner
     - Bluetooth Mesh > Stack > Models > Core > Configuration Client
     - Bluetooth Mesh > Models > Remote Provisioning > Remote Provisioning Client
     - Services > IO Stream > Driver > IO Stream: USART (keep the original ```vcom``` name)
@@ -49,23 +50,23 @@ The way how this example is structured is aimed to demonstrate and ease the unde
 
   ![install_button_press](images/install_button_press.png)
 
+  - Switch on the ```Enable Virtual COM UART``` option at Platform > Board > Board Control (except Thunderbirds)
+
+  ![enable_virtual_com](images/enable_virtual_com.png)
+
   - Add the Configuration Client Model in the Bluetooth Mesh Configurator to the Main Element (skipping this would result in SL_STATUS_BT_MESH_DOES_NOT_EXIST ((sl_status_t)0x0502))
  
   ![add_config_client_model](images/add_config_client_model.png)
 
-  - Increase the field values meant to store the data for Provisioned Devices (0 by default) at Bluetooth Mesh > Stack > Bluetooth Mesh Stack as per your needs
+  - Increase the field values meant to store the data for Provisioned Devices (0 by default) at Bluetooth Mesh > Bluetooth Mesh Stack as per your needs
     - Maximum number of provisioned devices allowed
     - Maximum number of Application Keys allowed for each Provisioned Device
     - Maximum number of Network Keys allowed for each Provisioned Device
-    - Max Foundation Client Cmds
+    - Maximum number of Client Commands for the Foundation Model
       - For detailed explanation of these fields see: https://www.silabs.com/documents/public/user-guides/ug472-bluetooth-mesh-v2x-node-configuration-users-guide.pdf
 
   ![increase_values_1](images/increase_values_1.png)
   ![increase_values_2](images/increase_values_2.png)
-
-  - Switch on the ```Enable Virtual COM UART``` option at Platform > Board > Board Control
-
-  ![enable_virtual_com](images/enable_virtual_com.png)
 
   - When everything is configured, build and flash the project
   - When it successfully boots up, it is going to create the Mesh network and starts to listen for the ```RPS``` device advertisements
@@ -79,14 +80,14 @@ The way how this example is structured is aimed to demonstrate and ease the unde
     - Bluetooth Mesh > Models > Remote Provisioning > Remote Provisioning Server
     - Services > IO Stream > Driver > IO Stream: USART (keep the original ```vcom``` name)
     - Application > Utility > Log
-  - Switch on the ```Enable Virtual COM UART``` option at Platform > Board > Board Control
+  - Switch on the ```Enable Virtual COM UART``` option at Platform > Board > Board Control (except Thunderbirds)
   - When everything is configured, build and flash the project
   - When the ```RPS``` device goes online, it will instantly starts to advertise, and gets to be provisioned as soon as the ```RPC``` notices it
 
   ![server_log_1](images/server_log_1.png)
   ![client_log_2](images/client_log_2.png)
 
-  - Now, this is the good time for flashing the third WSTK with the ```Bluetooth Mesh - SoC Switch``` demo example, to serve as an unprovisioned device (```SW```)
+  - Now, this is the good time for flashing the third WSTK with the ```Bluetooth Mesh - SoC Switch CTL``` demo example, to serve as an unprovisioned device (```SW```)
 
   ![sw_log_1](images/sw_log_1.png)
 

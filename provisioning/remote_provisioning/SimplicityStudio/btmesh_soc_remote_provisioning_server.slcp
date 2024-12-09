@@ -20,6 +20,7 @@ component:
   - id: app_log
   - id: bootloader_interface
   - id: app_button_press
+  - id: bt_post_build
   - id: btmesh_ctl_client
   - id: btmesh_factory_reset
   - id: btmesh_stack_gatt_prov_bearer
@@ -36,6 +37,9 @@ component:
   - id: iostream_usart
     instance:
       - vcom
+  - id: clock_manager
+  - id: device_init
+  - id: sl_system
   - id: mpu
   - id: rail_util_pti
   - id: simple_button

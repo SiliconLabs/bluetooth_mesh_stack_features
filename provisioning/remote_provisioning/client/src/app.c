@@ -135,25 +135,25 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
       //  app_assert_status_f(sc, "sl_btmesh_prov_init failed\r\n");
       //}
       break;
-    case sl_bt_evt_scanner_scan_report_id:
+    case sl_bt_evt_scanner_legacy_advertisement_report_id:
       /*app_log_debug("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                    evt->data.evt_scanner_scan_report.address_type ? "static random" : "public device",
-                    evt->data.evt_scanner_scan_report.address.addr[5],
-                    evt->data.evt_scanner_scan_report.address.addr[4],
-                    evt->data.evt_scanner_scan_report.address.addr[3],
-                    evt->data.evt_scanner_scan_report.address.addr[2],
-                    evt->data.evt_scanner_scan_report.address.addr[1],
-                    evt->data.evt_scanner_scan_report.address.addr[0]);*/
+                    evt->data.evt_scanner_legacy_advertisement_report.address_type ? "static random" : "public device",
+                    evt->data.evt_scanner_legacy_advertisement_report.address.addr[5],
+                    evt->data.evt_scanner_legacy_advertisement_report.address.addr[4],
+                    evt->data.evt_scanner_legacy_advertisement_report.address.addr[3],
+                    evt->data.evt_scanner_legacy_advertisement_report.address.addr[2],
+                    evt->data.evt_scanner_legacy_advertisement_report.address.addr[1],
+                    evt->data.evt_scanner_legacy_advertisement_report.address.addr[0]);*/
       // We found a remote server
-      if(!strcmp(remote_server_id, (char*)evt->data.evt_scanner_scan_report.data.data)) {
+      if(!strcmp(remote_server_id, (char*)evt->data.evt_scanner_legacy_advertisement_report.data.data)) {
         app_log("Remote Provisioning Server device noticed\r\n");
         for(uint8_t index = 0; index < SERVER_LIMIT; index++) {
           // We already have this server in list
-          if(!memcmp(evt->data.evt_scanner_scan_report.address.addr, server_list[index].address.addr, sizeof(evt->data.evt_scanner_scan_report.address.addr))) break;
+          if(!memcmp(evt->data.evt_scanner_legacy_advertisement_report.address.addr, server_list[index].address.addr, sizeof(evt->data.evt_scanner_legacy_advertisement_report.address.addr))) break;
           // We found an empty space in the list
           if(!memcmp(empty_addr.addr, server_list[index].address.addr, sizeof(empty_addr.addr))) {
             // Add the newly-found server to our list
-            server_list[index].address = evt->data.evt_scanner_scan_report.address;
+            server_list[index].address = evt->data.evt_scanner_legacy_advertisement_report.address;
             break;
           }
           app_log_warning("server_list full\r\n");
