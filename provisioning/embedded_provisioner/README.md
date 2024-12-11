@@ -40,9 +40,11 @@ This project README assumes that the reader is familiar with the usage of Silico
   - This Example is based on the ```Bluetooth Mesh - SoC Light CTL``` included with the Silicon Labs SiSDK
   - Create a new project based on the ```Bluetooth Mesh - SoC Light CTL``` example
   - Copy the following files into the root directory of your project, overwrite the already existing ones:
-    - app.c/h
-    - config.c/h
-    - btmesh_change.c/h
+    - src/app.c
+    - inc/config.h
+    - src/config.c
+    - inc/btmesh_change.h
+    - src/btmesh_change.c
   - Install the following components:
     - Application > Utility > Button Press
     - Bluetooth Mesh > Stack > Test

@@ -39,12 +39,18 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   - The example contains files for two separate projects, both for Provisioner and Provisionee nodes, placed in the appropriately named folders
   - For the Provisioner, please follow the instructions, found in the Embedded Provisioner Example, except:
-    - Copy the following file into the root directory of your project, overwriting the already existing one:
+    - Copy the following files into the root directory of your project, overwriting the already existing ones:
       - provisioner/src/app.c
+      - provisioner/inc/config.h
+      - provisioner/src/config.c
+      - provisioner/inc/btmesh_change.h
+      - provisioner/src/btmesh_change.c
   - For the Provisionee, please, see below:
     - Create a new project based on the ```Bluetooth Mesh - SoC Switch CTL``` example
-    - Copy the following file into the root directory of your project, overwriting the already existing one:
+    - Copy the following files into the root directory of your project, overwriting the already existing ones:
       - provisionee/src/app.c
+      - provisionee/inc/btmesh_change.h
+      - provisionee/src/btmesh_change.c
     - When everything is configured, build and flash the projects
     - Via the terminal, you can see when the Provisioner device noticed the Unprovisioned Beacon. Now, by long pressing ```Button 1``` on the Provisioner device, you can provision the newly noticed device into your network.
     - After the provisioning started, you have 5 seconds (adjustable with the ```APP_OOB_COUNTER_TIMEOUT```) to enter the OOB ```AuthValue``` into the Provisionee node with the ```Button 1``` pushbutton.

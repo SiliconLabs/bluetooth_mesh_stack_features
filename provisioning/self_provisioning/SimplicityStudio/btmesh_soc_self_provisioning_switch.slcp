@@ -17,49 +17,40 @@ filter:
 
 component:
   - id: app_assert
-  - id: app_log
-  - id: bluetooth_feature_system
-  - id: bootloader_interface
   - id: app_button_press
+  - id: app_log
+  - id: app_timer
+  - id: bootloader_interface
+  - id: bt_post_build
   - id: btmesh_ctl_client
-  - id: btmesh_event_log
   - id: btmesh_factory_reset
   - id: btmesh_stack_gatt_prov_bearer
   - id: btmesh_stack_relay
   - id: btmesh_stack_test
-  - id: btmesh_lighting_client
   - id: btmesh_lpn
   - id: btmesh_provisionee
   - id: btmesh_provisioning_decorator
   - id: btmesh_proxy
   - id: btmesh_scene_client
-  - id: btmesh_stack
-  - id: btmesh_updating_node
+  - id: btmesh_target_node
   - id: btmesh_iv_update
-  - id: btmesh_wstk_lcd
   - id: cli
     instance:
     - example
+  - id: clock_manager
+  - id: device_init
   - id: gatt_service_device_information
   - id: iostream_recommended_stream
-  - id: memlcd_usart
   - id: mpu
-  - id: mx25_flash_shutdown_usart
   - id: rail_util_pti
-  - id: simple_button
-    instance:
-      - btn0
-      - btn1
-  - id: simple_led
-    instance:
-      - led0
-      - led1
-  - id: app_timer
+  - id: simple_button_recommended_instance
+  - id: simple_led_recommended_instance
+  - id: sl_system
 
 source:
   - path: ../src/selfprov.c
   - path: ../switch/src/app.c
-  - path: ../switch/src/app_out_lcd.c
+  - path: ../switch/src/app_out_log.c
   - path: ../switch/src/btmesh_change.c
   - path: ../switch/src/local_cli_commands.c
   - path: ../switch/src/main.c
@@ -99,40 +90,34 @@ other_file:
 configuration:
   - name: APP_LOG_LEVEL
     value: "APP_LOG_LEVEL_INFO"
+  - name: NVM3_DEFAULT_NVM_SIZE
+    value: "0x6000"
   - name: NVM3_DEFAULT_CACHE_SIZE
     value: 100
-  - name: SL_BOARD_ENABLE_DISPLAY
-    value: "1"
   - name: SL_BOARD_ENABLE_VCOM
     value: "1"
-  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_MAX_BLOCK_SIZE_LOG_CFG_VAL
-    value: "9"
-  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_LPN_MODE_CFG_VAL
+  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_DFU_TARGET_LPN_MODE_CFG_VAL
     value: "1"
-  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_MAX_CHUNK_SIZE_CFG_VAL
-    value: "8"
-  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_MAX_CHUNKS_PER_BLOCK_CFG_VAL
-    value: "64"
-  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_PUSH_MODE_CFG_VAL
+  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_DFU_TARGET_MAX_BLOCK_SIZE_LOG_CFG_VAL
+    value: "0xB"
+    unless:
+      - "device_sdid_230"  # xG27
+  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_DFU_TARGET_MAX_CHUNK_SIZE_CFG_VAL
+    value: "53"
+  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_DFU_TARGET_MAX_CHUNKS_PER_BLOCK_CFG_VAL
+    value: "40"
+  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_DFU_TARGET_PULL_CHUNK_REQUEST_CNT_CFG_VAL
+    value: "3"
+  - name: SL_BTMESH_BLOB_TRANSFER_SERVER_DFU_TARGET_PUSH_MODE_CFG_VAL
     value: "0"
   - name: SL_BTMESH_CONFIG_MAX_PROV_BEARERS
     value: "3"
   - name: SL_BTMESH_FW_UPDATE_SERVER_FWID_CFG_VAL
-    value: '"socbtmswitchlp_v1"'
+    value: '"socbtmswitchctl_v1"'
   - name: SL_BTMESH_FW_UPDATE_SERVER_METADATA_LENGTH_CFG_VAL
     value: "31"
-  - name: SL_GLIB_FONTNORMAL_8X8
-    value: 0
   - name: SL_HEAP_SIZE
-    value: "0x4600"
-  - name: SL_IOSTREAM_EUSART_VCOM_PERIPHERAL_NO
-    value: 0
-    condition:
-      - "iostream_eusart"
-  - name: SL_IOSTREAM_EUSART_VCOM_PERIPHERAL
-    value: EUSART0
-    condition:
-      - "iostream_eusart"
+    value: "0x4300"
   - name: SL_PSA_KEY_USER_SLOT_COUNT
     value: "0"
     condition:
@@ -140,7 +125,7 @@ configuration:
   - name: SL_SIMPLE_BUTTON_ALLOW_LED_CONFLICT
     value: "1"
   - name: SL_STACK_SIZE
-    value: "0x1300"
+    value: "0x1200"
 
 template_contribution:
   - name: cli_command
@@ -154,9 +139,9 @@ template_contribution:
 tag:
   - hardware:device:sdid:!205
   - hardware:board_only
-  - hardware:component:button:2+
-  - hardware:component:display:ls013b7dh03
-  - hardware:component:led:2+
+  - hardware:component:button:1+
+  - hardware:component:display:!ls013b7dh03
+  - hardware:component:led:1+
   - hardware:device:flash:512
   - hardware:device:ram:32
   - hardware:rf:band:2400
