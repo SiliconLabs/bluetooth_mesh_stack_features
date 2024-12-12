@@ -1,4 +1,4 @@
-# Proxy Client #
+# Proxy Client Example #
 
 ## Description ##
 
@@ -12,13 +12,15 @@ The Proxy Server is a node that supports a mesh bearer using the Proxy protocol 
 
 The Proxy Client supports a mesh bearer using the Proxy protocol. For example, the Proxy Client can use the GATT bearer to send mesh messages to a node that supports the advertising bearer.
 
-## Gecko SDK version ##
+## Simplicity SDK version ##
 
-GSDK v4.3.1
+SiSDK v2024.6.0
 
 ---
 
 ## Important
+
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our [*External Repos*](../../README.md) feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -27,17 +29,16 @@ This project README assumes that the reader is familiar with the usage of Silico
 ## Requirements
 
   - Simplicity Studio 5 with the latest GSDK
-
-## Known limitations:
-
+  - SiliconLabs WSTK with Radio Board (for example BRD4187C)
 
 ## Instructions
 
-This Example is based on the ```Bluetooth Mesh - SoC Light``` included with the Silicon Labs GSDK
+This Example is based on the ```Bluetooth Mesh - SoC Light CTL``` included with the Silicon Labs GSDK
 
-  - Create a new project based on the ```Bluetooth Mesh - SoC Light``` example
+  - Create a new project based on the ```Bluetooth Mesh - SoC Light CTL``` example
   - Copy the following file into the root directory of your project, overwriting the already existing one:
-    - app.c
-  - Install the following component:
-    - Bluetooth Mesh > Stack Classes > Test
+    - src/app.c
+  - Install the following components:
+    - Bluetooth Mesh > Models > Lighting > LC Server
+    - Bluetooth Mesh > Stack > Test
   - When everything is configured, build and flash the project

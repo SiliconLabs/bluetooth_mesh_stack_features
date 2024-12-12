@@ -28,9 +28,7 @@
  *
  ******************************************************************************/
 
-#ifdef SL_COMPONENT_CATALOG_PRESENT
 #include "sl_component_catalog.h"
-#endif // SL_COMPONENT_CATALOG_PRESENT
 
 #ifdef SL_CATALOG_CLI_PRESENT
 #include "sl_btmesh.h"

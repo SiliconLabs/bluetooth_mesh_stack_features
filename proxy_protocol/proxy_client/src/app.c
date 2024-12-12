@@ -294,7 +294,7 @@ static void handle_le_connection_events(sl_bt_msg_t *evt)
   }
 }
 
-static void on_adv_scanned(sl_bt_evt_scanner_scan_report_t *e)
+static void on_adv_scanned(sl_bt_evt_scanner_legacy_advertisement_report_t *e)
 {
   /* Filter out unconnectable packets */
   if ((e->address_type & 0x7) != 0 && (e->address_type & 0x7) != 1) {
@@ -496,7 +496,7 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
          case TIMER_ID_RESTART:
            app_log("TIMER_ID_RESTART\r\n");
            // Restart timer expires, reset the device
-           sl_bt_system_reset(0);
+           sl_bt_system_reboot();
            break;
 
          case TIMER_ID_DELAY_TURN_OFF_ADV_BEARER:
@@ -516,11 +516,9 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
      }
      break;
 
-     case sl_bt_evt_scanner_scan_report_id: /* Can be removed after node_init issues with legacy and extended scanner solved */
      case sl_bt_evt_scanner_legacy_advertisement_report_id:
-     case sl_bt_evt_scanner_extended_advertisement_report_id:
        if (num_connections == 0) {
-         on_adv_scanned(&evt->data.evt_scanner_scan_report);
+         on_adv_scanned(&evt->data.evt_scanner_legacy_advertisement_report);
        }
        break;
 
