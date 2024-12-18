@@ -180,7 +180,7 @@ bool handle_reset_conditions(void)
     //sl_btmesh_initiate_full_reset();
     lcd_print("erasing keys", SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
     mesh_erase_nvm_settings();
-    sl_bt_system_reset(0);
+    sl_bt_system_reboot();
     return false;
   }
 
@@ -204,21 +204,12 @@ bool handle_reset_conditions(void)
 static void handle_boot_event(void)
 {
   sl_status_t sc;
-  char buf[BOOT_ERR_MSG_BUF_LEN];
   uuid_128 uuid;
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    sc = sl_btmesh_node_init();
-    if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
-      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%lx)\r\n", sc);
-    } else {
-      sc = sl_btmesh_node_get_uuid(&uuid);
-      app_assert_status_f(sc, "Failed to get UUID\n");
-      set_device_name(&uuid);
-    }
+    sc = sl_btmesh_node_get_uuid(&uuid);
+    app_assert_status_f(sc, "Failed to get UUID\n");
+    set_device_name(&uuid);
   }
 }
 
