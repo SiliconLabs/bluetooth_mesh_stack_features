@@ -17,9 +17,15 @@ same frequency of one message every second, the lifetime of the network using th
 
 ---
 
+## Simplicity SDK version ##
+
+SiSDK v2024.6.0
+
+---
+
 ## Important
 
-> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our [*External Repos*](../../README.md) feature!
 
 This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
 
@@ -27,22 +33,26 @@ This project README assumes that the reader is familiar with the usage of Silico
 
 ## Requirements
 
-  - Simplicity Studio 5 with the latest GSDK
-  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4162A)
+  - Simplicity Studio 5 with the latest SiSDK
+  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4187C)
 
 ---
 
 ## Instructions
 
-  - This Example is based on the ```Bluetooth Mesh - SoC Light``` included with the Silicon Labs GSDK
-  - Create a new project based on the ```Bluetooth Mesh - SoC Light``` example
-  - Install the "Bluetooth Mesh > Stack Classes > Test" component
+  - This Example is based on the ```Bluetooth Mesh - SoC Light CTL``` included with the Silicon Labs SiSDK
+  - Create a new project based on the ```Bluetooth Mesh - SoC Light CTL``` example
+  - Copy the following file into the root directory of your project, overwriting the already existing one:
+    - src/app.c
+  - Install the following component:
+    - Bluetooth Mesh > Stack > Test
+
   ![bluetooth_mesh_test_component](images/bluetooth_mesh_test_component.png)
-  Without this component, the test fuctions would return ((sl_status_t)0x000F) SL_STATUS_NOT_SUPPORTED during the initialization
+  Without this component, the test functions would return ((sl_status_t)0x000F) SL_STATUS_NOT_SUPPORTED during the initialization
   ![bluetooth_mesh_test_missing](images/bluetooth_mesh_test_missing.png)
   ![bluetooth_mesh_test_installed](images/bluetooth_mesh_test_installed.png)
-  - Replace the original ```app.c``` file with the provided one, build and flash the board
-  - Flash the other board with the ```Bluetooth Mesh - SoC Switch``` example
+
+  - Flash the other board with the ```Bluetooth Mesh - SoC Switch CTL``` example
   - If everything went right, you should see the boards booting up 
   - If both of the WSTKs are running, provision them into the same network with SiliconLabs's own Bluetooth Mesh Application for Android/iOS.
 
