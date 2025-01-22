@@ -94,7 +94,9 @@ other_file:
     directory: images
   - path: ../images/bluetooth_mesh_test_installed.png
     directory: images
-  - path: ../images/bluetooth_mesh_provision.jpg
+  - path: ../images/bluetooth_mesh_provision.png
+    directory: images
+  - path: ../images/bluetooth_mesh_iv_updated.png
     directory: images
 
 configuration:

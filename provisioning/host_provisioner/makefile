@@ -14,7 +14,6 @@ override LDFLAGS += -pthread
 # SL_CATALOG_APP_PROV_PRESENT flag indicates host provisioner application component present
 override CFLAGS += -D SL_CATALOG_APP_PROV_PRESENT
 
-
 ################################################################################
 # Components                                                                   #
 #                                                                              #
@@ -34,7 +33,6 @@ include $(SDK_DIR)/app/btmesh/component_host/btmesh_key_export.mk
 include $(SDK_DIR)/app/btmesh/component_host/btmesh_prov.mk
 include $(SDK_DIR)/app/btmesh/component_host/btmesh_conf.mk
 
-
 ################################################################################
 # Include paths                                                                #
 ################################################################################
@@ -45,7 +43,6 @@ $(SDK_DIR)/app/bluetooth/common_host/app_sleep \
 $(SDK_DIR)/app/bluetooth/common_host/system \
 $(SDK_DIR)/platform/common/inc \
 $(SDK_DIR)/protocol/bluetooth/inc
-
 
 ################################################################################
 # Input files                                                                  #

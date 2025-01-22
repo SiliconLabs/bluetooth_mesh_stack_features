@@ -240,7 +240,7 @@ void app_init(int argc, char *argv[])
   app_log("Resetting NCP...\r\n");
   // Reset NCP to ensure it gets into a defined state.
   // Once the chip successfully boots, boot event should be received.
-  sl_bt_system_reset(sl_bt_system_boot_mode_normal);
+  sl_bt_system_reboot();
 
   if (-1 == pthread_create(&consoleThreadId,
                             NULL,
@@ -258,7 +258,7 @@ void app_init(int argc, char *argv[])
     exit(1);
   }
 
-  startTimer(30000000, NO_HANDS);
+  //startTimer(30000000, NO_HANDS);
 }
 
 /**************************************************************************//**
