@@ -35,11 +35,10 @@
 #include "app.h"
 #include "app_log.h"
 
+#include "sl_bt_api.h"
 #include "sl_btmesh_api.h"
 
-#ifdef SL_COMPONENT_CATALOG_PRESENT
 #include "sl_component_catalog.h"
-#endif // SL_COMPONENT_CATALOG_PRESENT
 
 #ifdef SL_CATALOG_BTMESH_LPN_PRESENT
 #include "sl_btmesh_lpn.h"
@@ -146,9 +145,9 @@ void app_show_btmesh_node_provisioned(uint16_t address, uint32_t iv_index)
 }
 
 /*******************************************************************************
- *  Called when the Provisioning fails
+ *  Called from sl_btmesh_on_node_provisioning_started callback in app.c
  ******************************************************************************/
-void sl_btmesh_on_node_provisioning_failed(uint16_t result)
+void app_show_btmesh_node_provisioning_failed(uint16_t result)
 {
   app_log("BT mesh node provisioning failed (result: 0x%04x)" APP_LOG_NL, result);
   (void)result;

@@ -36,27 +36,53 @@ The ```Bluetooth Mesh - SoC Light HSL``` is an example application that you can 
 
 Currently the ```Bluetooth Mesh - SoC Switch``` does not support HSL Client (i.e. cannot set hue or saturation), so the switch side needs some porting job.
 
+## Simplicity SDK version ##
+
+SiSDK v2024.6.0
+
+---
+
 ## Important
 
-> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our [*External Repos*](../../README.md) feature!
+
+This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
+
+---
+
+## Requirements
+
+  - Simplicity Studio 5 with the latest SiSDK
+  - SiliconLabs WSTK with Radio Board for the Switch (for example BRD4187C)
+  - SiliconLabs Thunderboard with RGB LED (for example BRD4166A - this is a Series 1 device, so latest GSDK will be required as well!)
 
 ## Project Setup
 ### HSL Switch
-1) Create a ```Bluetooth Mesh - SoC Switch``` project and add the `Light HSL Client` model. The example can run on EFR32 boards which support BT Mesh, the provided project file is tested on xG21 (BRD4181A).
+  - Create a new project based on the ```Bluetooth Mesh - SoC Switch CTL``` example
+  - Copy the following files into the root directory of your project, overwrite the already existing ones:
+    - src/app.c
+    - inc/btmesh_change.h
+    - src/btmesh_change.c
+    - inc/btmesh_hsl_client.h
+    - src/btmesh_hsl_client.c
+  - Install the following components:
+    - Bluetooth Mesh > Models > Time and Scenes > Scene Client
+  - Add the `Light HSL Client` model in the Bluetooth Mesh Configurator to the Main Element
 
-![switch_project](images/switch_project.png)
+  ![light_hsl_client](images/light_hsl_client.png)
 
-2) Check `SL_BTMESH_GENERIC_HSL_CLIENT_INIT_CFG_VAL` on `sl_btmesh_generic_base_config.h`, if not set then set it.
+  - Enable the `Generic Client Models` in the `Bluetooth Mesh > Models > Generic > Generic Base` component Configuration and activate the `Light HSL Client` Model, as well (you may manually alter these macros in the `sl_btmesh_generic_base_config.h` file).
 
-![switch_config](images/switch_config.png)
-  
-3) Copy the provided `btmesh_hsl_client.c` and `btmesh_hsl_client.h` files into the project folder.
+  ![enable_models](images/enable_models.png)
 
-Configure the publish parameter as below, demo project has 7 HSL combinations to demonstrate the color changing.
+  - Configure the publish parameter as below, demo project has 7 HSL combinations to demonstrate the color changing.
+
   ```c
   void sl_btmesh_set_hsl(uint8_t new_hsl)
   {
-    uint16_thsl_table[HSL_INDEX_MAX][3] = {
+    char *color[HSL_INDEX_MAX]={"Off","Red","Green","Blue","Orange","Pink","Purple"};
+    //{hue(0-360 degree), saturation(0-100%),lightness(0-100%)}
+    uint16_t hsl_table[HSL_INDEX_MAX][3] = {
         {0,0,0},       //Off
         {0,100,50},    //Red
         {120,100,50},  //Green
@@ -81,28 +107,18 @@ Configure the publish parameter as below, demo project has 7 HSL combinations to
     req.hsl.lightness = target_lightness;
     //...
     sc = mesh_lib_generic_client_publish(MESH_LIGHTING_HSL_CLIENT_MODEL_ID,
-                                      BTMESH_HSL_CLIENT_MAIN,
-                                      hsl_trid,
-                                      &req,
-                                      IMMEDIATE,     // transition
-                                      delay,
-                                      NO_FLAGS       // flags
-                                      );
+                                         BTMESH_HSL_CLIENT_MAIN,
+                                         hsl_trid,
+                                         &req,
+                                         IMMEDIATE,     // transition
+                                         delay,
+                                         NO_FLAGS       // flags
+                                         );
     //...
   }
   ```
 
-4) Replace the `app.c` file, invoke sl_btmesh_change_hsl() in app_button_press_cb()
-![switch_replace_file](images/switch_replace_file.png)
-
 ## Testing
-### Gecko SDK Version
-Tested on GSDK v4.3.1
-
-### Hardware Required
-- Wireless STK Mainboard and EFR32xG21 Radio Board.
-- Thunderboard Sense 2, it has RGB LED, better for demonstrating the color variations.
-
 ### HSL Light
 Use the default Simplicity Studio ```Bluetooth Mesh - SoC HSL Light``` project.
 For observing the color changes made by the HSL client, the recommend HW is Thunderboard Sense 2 (BRD4166A).
@@ -112,9 +128,10 @@ The color of the light is controlled by rgb_led_set().
 
 ### Provisioner
 There is an NCP Provisioner C Example for Bluetooth Mesh.
-```SimplicityStudio/SDKs/gecko_sdk/app/btmesh/example_host/btmesh_host_provisioner```
+```./simplicity_sdk/app/btmesh/example_host/btmesh_host_provisioner```
 This can be used to provision the HSL light and switch and so can be our Bluetooth Mesh App.
 
 ### Test Log
-Each key press on button 0 will send the HSL client a control message, then the light will change its color accordingly.
+Each medium-long key press on BTN0 will send the HSL client a control message, then the light will change its color accordingly.
+
 ![test_log](images/test_log.png)

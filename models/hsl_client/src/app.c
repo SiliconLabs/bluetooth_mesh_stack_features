@@ -262,18 +262,11 @@ static void handle_boot_event(void)
   sl_status_t sc;
   bd_addr address;
   uint8_t address_type;
-  char buf[BOOT_ERR_MSG_BUF_LEN];
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
     sc = sl_bt_system_get_identity_address(&address, &address_type);
     app_assert_status_f(sc, "Failed to get Bluetooth address\n");
     set_device_name(&address);
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    sc = sl_btmesh_node_init();
-    if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
-      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-    }
   }
 }
 
