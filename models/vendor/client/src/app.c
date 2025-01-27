@@ -282,29 +282,29 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       app_assert_status_f(sc, "Failed to initialize vendor model\r\n");
 
       if(evt->data.evt_node_initialized.provisioned) {
-          app_log("Node already provisioned.\r\n");
+        app_log("Node already provisioned.\r\n");
       } else {
-          // Start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers
-          app_log("Node unprovisioned\r\n");
+        app_log("Node unprovisioned\r\n");
 
 #ifdef PROV_LOCALLY
-          // Derive the unicast address from the LSB 2 bytes from the BD_ADDR
-          bd_addr address;
-          sc = sl_bt_system_get_identity_address(&address, 0);
-          uni_addr = ((address.addr[1] << 8) | address.addr[0]) & 0x7FFF;
-          app_log("Unicast Address = 0x%04X\r\n", uni_addr);
-          app_log("Provisioning itself.\r\n");
-          sc = sl_btmesh_node_set_provisioning_data(enc_key,
-                                                    enc_key,
-                                                    NET_KEY_IDX,
-                                                    IVI,
-                                                    uni_addr,
-                                                    0);
-          app_assert_status_f(sc, "Failed to provision itself\r\n");
-          delay_reset_ms(100);
-          break;
+        // Derive the unicast address from the LSB 2 bytes from the BD_ADDR
+        bd_addr address;
+        sc = sl_bt_system_get_identity_address(&address, 0);
+        uni_addr = ((address.addr[1] << 8) | address.addr[0]) & 0x7FFF;
+        app_log("Unicast Address = 0x%04X\r\n", uni_addr);
+        app_log("Provisioning itself.\r\n");
+        sc = sl_btmesh_node_set_provisioning_data(enc_key,
+                                                  enc_key,
+                                                  NET_KEY_IDX,
+                                                  IVI,
+                                                  uni_addr,
+                                                  0);
+        app_assert_status_f(sc, "Failed to provision itself\r\n");
+        delay_reset_ms(100);
+        break;
 
 #else
+        // Start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers
         app_log("Send unprovisioned beacons.\r\n");
         sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
         app_assert_status_f(sc, "Failed to start unprovisioned beaconing\r\n");
@@ -511,7 +511,7 @@ static void app_reset_timer_cb(app_timer_t *handle, void *data)
 {
   (void)handle;
   (void)data;
-  sl_bt_system_reset(0);
+  sl_bt_system_reboot();
 }
 
 static app_timer_t app_reset_timer;
