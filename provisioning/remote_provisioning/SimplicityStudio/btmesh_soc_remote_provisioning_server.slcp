@@ -28,8 +28,6 @@ component:
   - id: btmesh_stack_relay
   - id: btmesh_lighting_client
   - id: btmesh_stack_test
-  - id: btmesh_feature_test
-  - id: btmesh_feature_config_client
   - id: btmesh_stack_config_client
   - id: btmesh_remote_provisioning_server
   - id: btmesh_proxy
