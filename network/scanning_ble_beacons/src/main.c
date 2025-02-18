@@ -27,9 +27,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
-#ifdef SL_COMPONENT_CATALOG_PRESENT
 #include "sl_component_catalog.h"
-#endif // SL_COMPONENT_CATALOG_PRESENT
 
 #include "sl_system_init.h"
 #include "app.h"

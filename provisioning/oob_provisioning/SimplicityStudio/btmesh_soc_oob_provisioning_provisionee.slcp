@@ -157,7 +157,6 @@ tag:
   - hardware:device:flash:512
   - hardware:device:ram:32
   - hardware:rf:band:2400
-  - prebuilt_demo
 
 ui_hints:
   highlight:

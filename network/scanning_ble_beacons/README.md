@@ -4,24 +4,53 @@
 
 Bluetooth mesh is based on advertisements, meaning that under the hood the stack is scanning all the time. By default, the scan response events are not passed to the application but they are just consumed by the mesh stack and then silently discarded.
 
-This example illustrated a way to scan BLE advertisements when the Bluetooth mesh stack is running. It looks through advertising data in scan response events and searches for the mesh proxy UUID 0x1828. If a proxy advertisement is found, the address of the sender and RSSI are printed to debug output.
+This example illustrated a way to scan BLE advertisements when the Bluetooth mesh stack is running. It looks through advertising data in scan response events and searches for the mesh proxy UUID `0x1828`. If a proxy advertisement is found, the address of the sender and RSSI are printed to debug output.
+
+## Simplicity SDK version ##
+
+SiSDK v2024.6.0
+
+---
 
 ## Important
 
-> ⚠ You are not required to follow through with the Instructions when using our *External Repos* feature!
+> ⚠ You are not required to follow through with the setup part of the Instructions when using our [*External Repos*](../../README.md) feature!
+
+This project README assumes that the reader is familiar with the usage of SiliconLabs Simplicity Studio 5 and the provided example projects within it.
+
+---
+
+## Requirements
+
+  - Simplicity Studio 5 with the latest SiSDK
+  - 2x SiliconLabs WSTK with Radio Boards (for example BRD4187C)
+
+## Instructions
+
+  - This Example is based on the ```Bluetooth Mesh - SoC Light CTL``` included with the Silicon Labs SiSDK
+  - Create a new project based on the ```Bluetooth Mesh - SoC Light CTL``` example
+  - Copy the following files into the root directory of your project, overwriting the already existing ones:
+    - src/app.c
+  - When everything is configured, build and flash the projects
+  - If everything went right, you should see the board booting up, then, you shall provision it
+  - On another radio board, flash any Bluetooth mesh application consisting of the Mesh Proxy service with UUID `0x1828` (such as the [*Proxy Client Example*](../../proxy_protocol/proxy_client/README.md)) and provision it .
+  - Open a serial terminal and observe the print statements
+
+![terminal_log](images/terminal_log.png)
 
 ### Implementation 
 
-Step 1: Handle the scan response event by adding following case to the sl_bt_on_event() function:
+1. Handle the scan response event by adding following case to the `sl_bt_on_event()` function:
 ```C
-case sl_bt_evt_scanner_scan_report_id:  
-  print_scan_resp(&evt->data.evt_scanner_scan_report);  
+case sl_bt_evt_scanner_legacy_advertisement_report_id:
+  print_scan_resp(&evt->data.evt_scanner_legacy_advertisement_report);
   break;
 ```
-Step 2: Add a function that handles the BLE scan responses, here's a sample:   
+
+2. Add a function that handles the BLE scan responses, here's a sample:   
 ```C
-static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp)
-{  
+static void print_scan_resp(sl_bt_evt_scanner_legacy_advertisement_report_t *pResp)
+{
   // decoding advertising packets is done here. The list of AD types can be found
   // at: https://www.bluetooth.com/specifications/assigned-numbers/Generic-Access-Profile
 
@@ -38,7 +67,6 @@ static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp)
 
   while (i < (pResp->data.len - 1))
   {
-
     ad_len  = pResp->data.data[i];
     ad_type = pResp->data.data[i+1];
 
@@ -60,30 +88,8 @@ static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp)
   {
     for(i=5;i>=0;i--)
     {
-      printf("%2.2x", pResp->address.addr[i]);
-    }  
-    printf(", RSSI: %d\r\n", pResp->rssi);
+      app_log("%2.2x", pResp->address.addr[i]);
+    }
+    app_log(", RSSI: %d\r\n", pResp->rssi);
   }
-}
 ```
-
-## Gecko SDK version ##
-
-- Bluetooth SDK v4.3.1
-
-## Hardware Required ##
-
-- Two WSTK boards
-- Two Bluetooth capable radio boards, e.g: BRD4104A
-
-## Set up ##
-
-1. Create a **Bluetooth Mesh - SoC Light** project in Simplicity Studio.
-
-2. The function code is in the *app.c* file. Copy and replace this file to the project folder.
-
-3. Compile and flash to your radio board, then provision it.
-
-4. Open serial console and observe the print statements.
-
-5. On another radio board, flash any Bluetooth mesh application consisting of the Mesh Proxy service with UUID 0x1828 and provision it.

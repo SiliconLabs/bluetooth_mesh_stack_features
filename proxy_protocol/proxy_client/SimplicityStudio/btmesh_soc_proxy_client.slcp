@@ -119,7 +119,6 @@ tag:
   - hardware:component:led:2+
   - hardware:device:sdid:!205
   - hardware:rf:band:2400
-  - prebuilt_demo
 
 ui_hints:
   highlight:
