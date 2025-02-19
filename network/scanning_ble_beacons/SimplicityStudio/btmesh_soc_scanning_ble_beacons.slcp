@@ -36,7 +36,6 @@ component:
   - id: btmesh_scheduler_server
   - id: btmesh_stack
   - id: btmesh_time_server
-  - id: btmesh_updating_node
   - id: btmesh_iv_update
   - id: cli
     instance:
