@@ -46,10 +46,6 @@ component:
     instance:
       - led0
       - led1
-  - id: simple_led
-    instance:
-      - led0
-      - led1
   - id: rail_util_pti
   - id: simple_button_recommended_instance
   - id: app_button_press

@@ -43,7 +43,6 @@ component:
   - id: simple_button
     instance:
       - btn0
-      - btn1
 
 source:
   - path: ../server/src/app.c
