@@ -35,8 +35,6 @@
 #include "app_button_press.h"
 #include "sl_simple_button.h"
 #include "sl_simple_button_instances.h"
-#include "sl_simple_led.h"
-#include "sl_simple_led_instances.h"
 
 #ifdef SL_COMPONENT_CATALOG_PRESENT
 #include "sl_component_catalog.h"

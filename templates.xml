@@ -19,7 +19,7 @@
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="provisioning/remote_provisioning/SimplicityStudio/btmesh_soc_remote_provisioning_client.slcp"/>
     <properties key="readmeFiles" value="provisioning/remote_provisioning/README.md"/>
-    <properties key="boardCompatibility" value="brd2601b brd2602a brd2703a brd4108a brd4110b brd4111b brd4115a brd4176a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183c brd4184a brd4184b brd4186c brd4187c brd4188b brd4194a brd4195a brd4195b brd4196a brd4196b brd4198a brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4311a brd4311b brd4312a brd4314a brd4316a brd4317a brd4318a brd4329a brd4332a brd4335a brd4402a brd4403a com.silabs.board.none"/>
+    <properties key="boardCompatibility" value="brd2601b brd2703a brd4110b brd4111b brd4115a brd4176a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4186c brd4187c brd4188b brd4194a brd4195a brd4195b brd4196a brd4196b brd4198a brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4311a brd4311b brd4312a brd4316a brd4317a brd4318a brd4329a brd4332a brd4335a brd4402a com.silabs.board.none"/>
     <properties key="partCompatibility" value=".*bgm21.* .*bgm22.*hna.* .*bgm24.* .*efr32bg21.* .*efr32bg22.*f512.* .*efr32bg24.* .*efr32bg27.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm21.* .*mgm22.* .*mgm24.*"/>
     <properties key="ideCompatibility" value="generic-template iar-embedded-workbench makefile-ide simplicity-ide visual-studio-code"/>
     <properties key="toolchainCompatibility" value="gcc iar"/>
@@ -215,7 +215,7 @@
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="models/blob_transfer/SimplicityStudio/btmesh_soc_blob_transfer_model_client.slcp"/>
     <properties key="readmeFiles" value="models/blob_transfer/README.md"/>
-    <properties key="boardCompatibility" value="brd4110b brd4111b brd4115a brd4176a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183c brd4184a brd4186c brd4187c brd4188b brd4194a brd4195a brd4195b brd4196a brd4196b brd4198a brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4311a brd4311b brd4312a brd4316a brd4317a brd4318a brd4329a brd4332a brd4335a brd4402a brd4403a com.silabs.board.none"/>
+    <properties key="boardCompatibility" value="brd4176a brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4186c brd4187c brd4188b brd4194a brd4195a brd4195b brd4196a brd4196b brd4198a brd4308a brd4308b brd4308c brd4308d brd4311a brd4311b brd4312a brd4316a brd4317a brd4318a brd4335a brd4402a com.silabs.board.none"/>
     <properties key="partCompatibility" value=".*bgm21.* .*bgm22.*hna.* .*bgm24.* .*efr32bg21.* .*efr32bg22.*f512.* .*efr32bg24.* .*efr32bg27.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm21.* .*mgm22.* .*mgm24.*"/>
     <properties key="ideCompatibility" value="generic-template iar-embedded-workbench makefile-ide simplicity-ide visual-studio-code"/>
     <properties key="toolchainCompatibility" value="gcc iar"/>
@@ -229,7 +229,7 @@
     <properties key="keywords" value="universal\ configurator"/>
     <properties key="projectFilePaths" value="models/blob_transfer/SimplicityStudio/btmesh_soc_blob_transfer_model_server.slcp"/>
     <properties key="readmeFiles" value="models/blob_transfer/README.md"/>
-    <properties key="boardCompatibility" value="brd4110b brd4111b brd4115a brd4176a brd4179b brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4183a brd4183c brd4184a brd4186c brd4187c brd4188b brd4194a brd4195a brd4195b brd4196a brd4196b brd4198a brd4308a brd4308b brd4308c brd4308d brd4309a brd4309b brd4311a brd4311b brd4312a brd4316a brd4317a brd4318a brd4329a brd4332a brd4335a brd4402a brd4403a com.silabs.board.none"/>
+    <properties key="boardCompatibility" value="brd4176a brd4180a brd4180b brd4181a brd4181b brd4181c brd4182a brd4186c brd4187c brd4188b brd4194a brd4195a brd4195b brd4196a brd4196b brd4198a brd4308a brd4308b brd4308c brd4308d brd4311a brd4311b brd4312a brd4316a brd4317a brd4318a brd4335a brd4402a com.silabs.board.none"/>
     <properties key="partCompatibility" value=".*bgm21.* .*bgm22.*hna.* .*bgm24.* .*efr32bg21.* .*efr32bg22.*f512.* .*efr32bg24.* .*efr32bg27.* .*efr32mg21.* .*efr32mg22.* .*efr32mg24.* .*efr32mg27.* .*mgm21.* .*mgm22.* .*mgm24.*"/>
     <properties key="ideCompatibility" value="generic-template iar-embedded-workbench makefile-ide simplicity-ide visual-studio-code"/>
     <properties key="toolchainCompatibility" value="gcc iar"/>

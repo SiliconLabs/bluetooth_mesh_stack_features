@@ -274,10 +274,8 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
         break;
 
 #else
-        // Start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers
+        // Start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers (done automatically now)
         app_log("Send unprovisioned beacons.\r\n");
-        sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
-        app_assert_status_f(sc, "Failed to start unprovisioned beaconing\r\n");
 #endif // #ifdef PROV_LOCALLY
       }
 
