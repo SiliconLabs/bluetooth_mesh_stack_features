@@ -192,22 +192,31 @@ static void set_device_name(bd_addr *addr)
   lcd_print(name, SL_BTMESH_WSTK_LCD_ROW_NAME_CFG_VAL);
 }
 
+
 /***************************************************************************//**
  * Handles button press and does a factory reset
  *
  * @return true if there is no button press
  ******************************************************************************/
-bool handle_reset_conditions()
+bool handle_reset_conditions(void)
 {
-  // If either PB0 or PB1 is held down then do factory reset
-  if ((sl_simple_button_get_state(sl_button_btn0.context)
-       == SL_SIMPLE_BUTTON_PRESSED)
-      || (sl_simple_button_get_state(sl_button_btn1.context)
-          == SL_SIMPLE_BUTTON_PRESSED) ) {
-    // Factory reset
+  // If PB0 is held down then do full factory reset
+  if (sl_simple_button_get_state(&sl_button_btn0)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Full factory reset
     sl_btmesh_initiate_full_reset();
     return false;
   }
+
+#ifndef SINGLE_BUTTON
+  // If PB1 is held down then do node factory reset
+  if (sl_simple_button_get_state(&sl_button_btn1)
+      == SL_SIMPLE_BUTTON_PRESSED) {
+    // Node factory reset
+    sl_btmesh_initiate_node_reset();
+    return false;
+  }
+#endif // SL_CATALOG_BTN1_PRESENT
   return true;
 }
 
@@ -221,7 +230,6 @@ static void handle_boot_event(void)
   sl_status_t sc;
   bd_addr address;
   uint8_t address_type;
-  char buf[BOOT_ERR_MSG_BUF_LEN];
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
     sc = sl_bt_system_get_identity_address(&address, &address_type);
@@ -229,13 +237,6 @@ static void handle_boot_event(void)
                "[E: 0x%04x] Failed to get Bluetooth address\n",
                (int)sc);
     set_device_name(&address);
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    sc = sl_btmesh_node_init();
-    if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
-      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%lx)\r\n", sc);
-    }
   }
 }
 

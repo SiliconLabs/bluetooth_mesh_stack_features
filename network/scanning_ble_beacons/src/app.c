@@ -99,7 +99,7 @@ static app_timer_t app_led_blinking_timer;
 
 // periodic timer callback
 static void app_led_blinking_timer_cb(app_timer_t *handle, void *data);
-static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp);
+static void print_scan_resp(sl_bt_evt_scanner_legacy_advertisement_report_t *pResp);
 /*******************************************************************************
  * Global variables
  ******************************************************************************/
@@ -172,10 +172,7 @@ static void set_device_name(bd_addr *addr)
 bool handle_reset_conditions()
 {
   // If either PB0 or PB1 is held down then do factory reset
-  if ((sl_simple_button_get_state(&sl_button_btn0)
-       == SL_SIMPLE_BUTTON_PRESSED)
-      || (sl_simple_button_get_state(&sl_button_btn1)
-          == SL_SIMPLE_BUTTON_PRESSED) ) {
+  if (sl_simple_button_get_state(&sl_button_btn0) == SL_SIMPLE_BUTTON_PRESSED) {
     // Factory reset
     sl_btmesh_initiate_full_reset();
     return false;
@@ -193,7 +190,6 @@ static void handle_boot_event(void)
   sl_status_t sc;
   bd_addr address;
   uint8_t address_type;
-  char buf[BOOT_ERR_MSG_BUF_LEN];
   // Check reset conditions and continue if not reset.
   if (handle_reset_conditions()) {
     sc = sl_bt_system_get_identity_address(&address, &address_type);
@@ -201,12 +197,15 @@ static void handle_boot_event(void)
                "[E: 0x%04x] Failed to get Bluetooth address\n",
                (int)sc);
     set_device_name(&address);
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
+    // Initialize Mesh stack in Node operation mode,
+    // wait for initialized event
+    app_log("Node init\r\n");
     sc = sl_btmesh_node_init();
-    if (sc) {
-      snprintf(buf, BOOT_ERR_MSG_BUF_LEN, "init failed (0x%lx)", sc);
-      lcd_print(buf, SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-      app_log("Initialization failed (0x%lx)\r\n", sc);
+
+    switch (sc) {
+      case 0x00: break;
+      case 0x02: app_log("Node already initialized\r\n"); break;
+      default: app_assert_status_f(sc, "Failed to init node\r\n");
     }
   }
 }
@@ -262,8 +261,8 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
       handle_le_connection_events(evt);
       break;
 
-    case sl_bt_evt_scanner_scan_report_id:
-      print_scan_resp(&evt->data.evt_scanner_scan_report);
+    case sl_bt_evt_scanner_legacy_advertisement_report_id:
+      print_scan_resp(&evt->data.evt_scanner_legacy_advertisement_report);
       break;
     default:
       break;
@@ -369,7 +368,7 @@ void sl_btmesh_lighting_color_pwm_cb(uint16_t color)
   app_led_set_color(color);
 }
 
-static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp)
+static void print_scan_resp(sl_bt_evt_scanner_legacy_advertisement_report_t *pResp)
 {
   // decoding advertising packets is done here. The list of AD types can be found
   // at: https://www.bluetooth.com/specifications/assigned-numbers/Generic-Access-Profile
@@ -387,7 +386,6 @@ static void print_scan_resp(sl_bt_evt_scanner_scan_report_t *pResp)
 
   while (i < (pResp->data.len - 1))
   {
-
     ad_len  = pResp->data.data[i];
     ad_type = pResp->data.data[i+1];
 

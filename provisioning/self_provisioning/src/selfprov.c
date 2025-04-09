@@ -395,6 +395,6 @@ void self_provisioning(void)
         }
 
         app_log(">node self configured, resetting ..\r\n");
-        sl_bt_system_reset(0);
+        sl_bt_system_reboot();
     }
 }

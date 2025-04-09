@@ -23,15 +23,20 @@ component:
   - id: btmesh_stack_gatt_prov_bearer
   - id: btmesh_stack_node
   - id: btmesh_stack_relay
+  - id: btmesh_provisionee
   - id: btmesh_proxy
+  - id: sensor_rht_mock
   - id: btmesh_stack
   - id: btmesh_stack_test
+  - id: clock_manager
+  - id: device_init
   - id: iostream_usart
     instance:
       - vcom
   - id: mpu
   - id: btmesh_stack_vendor_model
   - id: rail_util_pti
+  - id: sl_system
   - id: app_timer
 
 source:
@@ -55,11 +60,7 @@ readme:
   - path: ../README.md
 
 other_file:
-  - path: ../images/reliable_get_flow.png
-    directory: images
-  - path: ../images/reliable_set_flow.png
-    directory: images
-  - path: ../images/unreliable_set_flow.png
+  - path: ../images/create_vendor_model.png
     directory: images
   - path: ../images/vendor_client_terminal.png
     directory: images

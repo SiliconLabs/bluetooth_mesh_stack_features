@@ -103,15 +103,15 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
                  address.addr[1],
                  address.addr[0]);
       break;
-    case sl_bt_evt_scanner_scan_report_id:
+    case sl_bt_evt_scanner_legacy_advertisement_report_id:
       /*app_log("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-              evt->data.evt_scanner_scan_report.address_type ? "static random" : "public device",
-              evt->data.evt_scanner_scan_report.address.addr[5],
-              evt->data.evt_scanner_scan_report.address.addr[4],
-              evt->data.evt_scanner_scan_report.address.addr[3],
-              evt->data.evt_scanner_scan_report.address.addr[2],
-              evt->data.evt_scanner_scan_report.address.addr[1],
-              evt->data.evt_scanner_scan_report.address.addr[0]);*/
+              evt->data.evt_scanner_legacy_advertisement_report.address_type ? "static random" : "public device",
+              evt->data.evt_scanner_legacy_advertisement_report.address.addr[5],
+              evt->data.evt_scanner_legacy_advertisement_report.address.addr[4],
+              evt->data.evt_scanner_legacy_advertisement_report.address.addr[3],
+              evt->data.evt_scanner_legacy_advertisement_report.address.addr[2],
+              evt->data.evt_scanner_legacy_advertisement_report.address.addr[1],
+              evt->data.evt_scanner_legacy_advertisement_report.address.addr[0]);*/
       break;
     case sl_bt_evt_advertiser_timeout_id:
       // Ignore advertiser timeout events
@@ -164,16 +164,15 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
   }
 }
 
-// We are using the older advertiser API, as the newer one is not yet Mesh compatible!
 void start_advertising() {
   sl_status_t sc;
   sc = sl_bt_advertiser_create_set(&advertising_set_handle);
   app_assert_status_f(sc, "sl_bt_advertiser_create_set failed");
   uint8_t* data = (unsigned char*)"RemoteServer";
-  sc = sl_bt_advertiser_set_data(advertising_set_handle,
-                                 0,
-                                 12,
-                                 data);
+  sc = sl_bt_legacy_advertiser_set_data(advertising_set_handle,
+                                        0,
+                                        12,
+                                        data);
   app_assert_status_f(sc, "sl_bt_advertiser_set_data failed");
 
   // Set advertising interval to 100ms.
@@ -186,8 +185,7 @@ void start_advertising() {
   app_assert_status_f(sc, "sl_bt_advertiser_set_timing failed");
 
   // Start advertising and enable connections.
-  sc = sl_bt_advertiser_start(advertising_set_handle,
-                              sl_bt_advertiser_user_data,
-                              sl_bt_advertiser_non_connectable);
+  sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
+                                     sl_bt_legacy_advertiser_non_connectable);
   app_assert_status_f(sc, "sl_bt_advertiser_start failed");
 }

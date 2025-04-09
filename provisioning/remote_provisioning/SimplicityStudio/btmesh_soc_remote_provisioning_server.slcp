@@ -20,6 +20,7 @@ component:
   - id: app_log
   - id: bootloader_interface
   - id: app_button_press
+  - id: bt_post_build
   - id: btmesh_ctl_client
   - id: btmesh_factory_reset
   - id: btmesh_stack_gatt_prov_bearer
@@ -27,8 +28,6 @@ component:
   - id: btmesh_stack_relay
   - id: btmesh_lighting_client
   - id: btmesh_stack_test
-  - id: btmesh_feature_test
-  - id: btmesh_feature_config_client
   - id: btmesh_stack_config_client
   - id: btmesh_remote_provisioning_server
   - id: btmesh_proxy
@@ -36,12 +35,14 @@ component:
   - id: iostream_usart
     instance:
       - vcom
+  - id: clock_manager
+  - id: device_init
+  - id: sl_system
   - id: mpu
   - id: rail_util_pti
   - id: simple_button
     instance:
       - btn0
-      - btn1
 
 source:
   - path: ../server/src/app.c

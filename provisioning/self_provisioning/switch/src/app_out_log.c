@@ -1,6 +1,6 @@
 /***************************************************************************//**
  * @file
- * @brief Application Output LCD code
+ * @brief Application Output Log code
  *******************************************************************************
  * # License
  * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
@@ -35,11 +35,10 @@
 #include "app.h"
 #include "app_log.h"
 
+#include "sl_bt_api.h"
 #include "sl_btmesh_api.h"
 
-#ifdef SL_COMPONENT_CATALOG_PRESENT
 #include "sl_component_catalog.h"
-#endif // SL_COMPONENT_CATALOG_PRESENT
 
 #ifdef SL_CATALOG_BTMESH_LPN_PRESENT
 #include "sl_btmesh_lpn.h"
@@ -53,64 +52,53 @@
 #include "sl_btmesh_provisioning_decorator.h"
 #endif // SL_CATALOG_BTMESH_PROVISIONING_DECORATOR_PRESENT
 
-#include "sl_btmesh_wstk_lcd.h"
-
 /***************************************************************************//**
- * @addtogroup btmesh_lpn_cb BT mesh Low Power Node Callbacks
+ * @addtogroup btmesh_lpn_cb
+ * @brief BT mesh Low Power Node Callbacks
  * @{
  ******************************************************************************/
 
 /*******************************************************************************
- * Called when the Low Power Node is initialized.
+ *  Called when the Low Power Node is initialized.
  ******************************************************************************/
 void sl_btmesh_lpn_on_init(void)
 {
   app_log("BT mesh LPN on" APP_LOG_NL);
-  sl_status_t status = sl_btmesh_LCD_write("LPN on", SL_BTMESH_WSTK_LCD_ROW_LPN_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
 }
 
 /*******************************************************************************
- * Called when the Low Power Node is deinitialized.
+ *  Called when the Low Power Node is deinitialized.
  ******************************************************************************/
 void sl_btmesh_lpn_on_deinit(void)
 {
   app_log("BT mesh LPN off" APP_LOG_NL);
-  sl_status_t status = sl_btmesh_LCD_write("LPN off", SL_BTMESH_WSTK_LCD_ROW_LPN_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
 }
 
 /*******************************************************************************
- * Called when the Low Power Node establishes friendship with another node
+ *  Called when the Low Power Node establishes friendship with another node
  ******************************************************************************/
 void sl_btmesh_lpn_on_friendship_established(uint16_t node_address)
 {
   app_log("BT mesh LPN with friend (node address: 0x%04x)" APP_LOG_NL, node_address);
-  sl_status_t status = sl_btmesh_LCD_write("LPN with friend",
-                                           SL_BTMESH_WSTK_LCD_ROW_LPN_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
+  (void)node_address;
 }
 
 /*******************************************************************************
- * Called when the friendship establishment attempt of Low Power Node fails
+ *  Called when the friendship establishment attempt of Low Power Node fails
  ******************************************************************************/
 void sl_btmesh_lpn_on_friendship_failed(uint16_t reason)
 {
   app_log("BT mesh No friend (reason: 0x%04x)" APP_LOG_NL, reason);
-  sl_status_t status = sl_btmesh_LCD_write("No friend",
-                                           SL_BTMESH_WSTK_LCD_ROW_LPN_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
+  (void)reason;
 }
 
 /*******************************************************************************
- * Called when friendship that was successfully established has been terminated
+ *  Called when friendship that was successfully established has been terminated
  ******************************************************************************/
 void sl_btmesh_lpn_on_friendship_terminated(uint16_t reason)
 {
   app_log("BT mesh Friend lost (reason: 0x%04x)" APP_LOG_NL, reason);
-  sl_status_t status = sl_btmesh_LCD_write("Friend lost",
-                                           SL_BTMESH_WSTK_LCD_ROW_LPN_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
+  (void)reason;
 }
 
 /** @} */ // btmesh_lpn_cb
@@ -121,7 +109,7 @@ void sl_btmesh_lpn_on_friendship_terminated(uint16_t reason)
  * @{
  ******************************************************************************/
 /*******************************************************************************
- * Called at node initialization time to provide provisioning information
+ *  Called at node initialization time to provide provisioning information
  ******************************************************************************/
 void sl_btmesh_on_provision_init_status(bool provisioned,
                                         uint16_t address,
@@ -131,46 +119,38 @@ void sl_btmesh_on_provision_init_status(bool provisioned,
     app_show_btmesh_node_provisioned(address, iv_index);
   } else {
     app_log("BT mesh node is unprovisioned, started unprovisioned beaconing..." APP_LOG_NL);
-    sl_status_t status = sl_btmesh_LCD_write("unprovisioned",
-                                             SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-    app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
   }
 }
 
 /*******************************************************************************
- * Called from sl_btmesh_on_node_provisioning_started callback in app.c
+ *  Called from sl_btmesh_on_node_provisioning_started callback in app.c
  ******************************************************************************/
 void app_show_btmesh_node_provisioning_started(uint16_t result)
 {
-  app_log("BT mesh node provisioning is started (result: 0x%04x)" APP_LOG_NL, result);
-  sl_status_t status = sl_btmesh_LCD_write("provisioning...",
-                                           SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
+  app_log("BT mesh node provisioning is started (result: 0x%04x)" APP_LOG_NL,
+          result);
+  (void)result;
 }
 
 /*******************************************************************************
- * Called from sl_btmesh_on_node_provisioned callback in app.c
+ *  Called from sl_btmesh_on_node_provisioned callback in app.c
  ******************************************************************************/
-void app_show_btmesh_node_provisioned(uint16_t address,
-                                      uint32_t iv_index)
+void app_show_btmesh_node_provisioned(uint16_t address, uint32_t iv_index)
 {
   app_log("BT mesh node is provisioned (address: 0x%04x, iv_index: 0x%lx)" APP_LOG_NL,
           address,
           iv_index);
-  sl_status_t status = sl_btmesh_LCD_write("provisioned",
-                                           SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
+  (void)address;
+  (void)iv_index;
 }
 
 /*******************************************************************************
- * Called when the Provisioning fails
+ *  Called from sl_btmesh_on_node_provisioning_started callback in app.c
  ******************************************************************************/
-void sl_btmesh_on_node_provisioning_failed(uint16_t result)
+void app_show_btmesh_node_provisioning_failed(uint16_t result)
 {
   app_log("BT mesh node provisioning failed (result: 0x%04x)" APP_LOG_NL, result);
-  sl_status_t status = sl_btmesh_LCD_write("prov failed...",
-                                           SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
+  (void)result;
 }
 
 /** @} */ // prov_decor_cb
@@ -180,16 +160,12 @@ void sl_btmesh_on_node_provisioning_failed(uint16_t result)
  * @brief Factory Reset Callbacks
  * @{
  ******************************************************************************/
-
 /*******************************************************************************
  * Called when full reset is established, before system reset
  ******************************************************************************/
 void sl_btmesh_factory_reset_on_full_reset(void)
 {
   app_log("Factory reset" APP_LOG_NL);
-  sl_status_t status = sl_btmesh_LCD_write("Factory reset",
-                                           SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
 }
 
 /*******************************************************************************
@@ -198,9 +174,6 @@ void sl_btmesh_factory_reset_on_full_reset(void)
 void sl_btmesh_factory_reset_on_node_reset(void)
 {
   app_log("Node reset" APP_LOG_NL);
-  sl_status_t status = sl_btmesh_LCD_write("Node reset",
-                                           SL_BTMESH_WSTK_LCD_ROW_STATUS_CFG_VAL);
-  app_log_status_error_f(status, "LCD write failed" APP_LOG_NL);
 }
 
 /** @} */ // fact_rst_cb
