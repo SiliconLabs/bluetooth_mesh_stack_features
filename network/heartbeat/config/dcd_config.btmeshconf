@@ -1,0 +1,29 @@
+{
+  "composition_data": {
+    "cid": "0x02ff",
+    "pid": "0xffff",
+    "vid": "0x0700",
+    "elements": [
+      {
+        "name": "Main",
+        "location": "0x0000",
+        "sig_models": [
+          {
+            "mid": "0x0000",
+            "name": "Configuration Server"
+          },
+          {
+            "mid": "0x0002",
+            "name": "Health Server"
+          },
+          {
+            "mid": "0x0001",
+            "name": "Configuration Client"
+          }
+        ],
+        "vendor_models": []
+      }
+    ]
+  },
+  "vendor_model_descriptors": []
+}
