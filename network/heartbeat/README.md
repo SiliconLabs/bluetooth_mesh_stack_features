@@ -105,4 +105,11 @@ The WebApp is utilizing the vis-network JavaScript library, with MIT license: ht
   ![webapp_ui_3](images/webapp_ui_4.png)
   ![provisioner_log_1](images/provisioner_log_2.png)
 
+## Troubleshooting
+
+  - On Windows operating systems there are certain caveats, that one should pay attention to:
+    - Preliminary pairing might be necessary between the dev board and the computer
+    - The operating system might show a different name for the dev board, due to name-caching
+    - The browser might find the dev board easier, if it is inspected first on chrome://bluetooth-internals/#devices
+
 ---
