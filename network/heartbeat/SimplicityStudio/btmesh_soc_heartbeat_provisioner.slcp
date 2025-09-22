@@ -1,0 +1,114 @@
+project_name: btmesh_soc_heartbeat_provisioner
+package: Btmesh
+label: Bluetooth Mesh - SoC Heartbeat Provisioner
+description: >
+  This example is aimed to demonstrate the creation of a Mesh network with SoC Provisioner from a web browser, route mapping via Heartbeats and plotting it via said browser.
+
+category: Bluetooth Mesh Examples
+quality: development
+
+filter:
+  - name: "Wireless Technology"
+    value: ["Bluetooth Mesh"]
+  - name: "Device Type"
+    value: ["SoC"]
+  - name: "Project Difficulty"
+    value: ["Advanced"]
+
+component:
+  - id: app_assert
+  - id: app_log
+  - id: bootloader_interface
+  - id: bt_post_build
+  - id: btmesh_factory_reset
+  - id: btmesh_stack_gatt_prov_bearer
+  - id: btmesh_stack_node
+  - id: btmesh_stack_relay
+  - id: btmesh_stack_test
+  - id: btmesh_stack_config_client
+  - id: btmesh_stack_provisioner
+  - id: btmesh_provisioner
+  - id: btmesh_proxy
+  - id: btmesh_stack
+  - id: iostream_usart
+    instance:
+      - vcom
+  - id: clock_manager
+  - id: device_init
+  - id: mpu
+  - id: rail_util_pti
+  - id: sl_main
+  - id: simple_button
+    instance:
+      - btn0
+      - btn1
+
+source:
+  - path: ../src/app.c
+  - path: ../src/app_bm.c
+
+include:
+  - path: ../inc/
+    file_list:
+    - path: app.h
+
+config_file:
+  - override:
+      component: btmesh_dcd_configuration
+      file_id: dcd_configuration_file_id
+    path: ../config/dcd_config.btmeshconf
+    directory: btmeshconf
+  - override:
+      component: gatt_configuration
+      file_id: gatt_configuration_file_id
+    path: ../config/gatt_configuration.btconf
+    directory: btconf
+
+readme:
+  - path: ../README.md
+
+configuration:
+  - name: EMDRV_DMADRV_DMA_CH_COUNT
+    value: 2
+  - name: APP_LOG_LEVEL
+    value: "APP_LOG_LEVEL_INFO"
+  - name: SL_BOARD_ENABLE_VCOM
+    value: "1"
+    condition:
+      - "iostream_usart"
+  - name: NVM3_DEFAULT_NVM_SIZE
+    value: "0x6000"
+  - name: SL_BTMESH_CONFIG_MAX_PROV_BEARERS
+    value: "3"
+  - name: SL_PSA_KEY_USER_SLOT_COUNT
+    value: "0"
+    condition:
+      - psa_crypto
+  - name: SL_STACK_SIZE
+    value: "0x1200"
+  - name: SL_BTMESH_CONFIG_MAX_PROVISIONED_DEVICES
+    value: "4"
+  - name: SL_BTMESH_CONFIG_MAX_PROVISIONED_DEVICE_APPKEYS
+    value: "4"
+  - name: SL_BTMESH_CONFIG_MAX_PROVISIONED_DEVICE_NETKEYS
+    value: "4"
+  - name: SL_BTMESH_CONFIG_MAX_FOUNDATION_CLIENT_CMDS
+    value: "4"
+
+post_build:
+  - profile: btmesh_common
+    condition: [device_series_2, bootloader_app_properties]
+
+tag:
+  - hardware:device:flash:512
+  - hardware:device:ram:32
+  - hardware:rf:band:2400
+
+ui_hints:
+  highlight:
+    - path: config/btconf/gatt_configuration.btconf
+      focus: false
+    - path: config/btmeshconf/dcd_config.btmeshconf
+      focus: false
+    - path: README.md
+      focus: true
