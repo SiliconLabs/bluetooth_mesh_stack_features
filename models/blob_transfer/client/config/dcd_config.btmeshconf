@@ -1,8 +1,8 @@
 {
   "composition_data": {
     "cid": "0x02ff",
-    "pid": "0xffff",
-    "vid": "0x0421",
+    "pid": "0x0001",
+    "vid": "0x0700",
     "elements": [
       {
         "name": "Main",
@@ -15,16 +15,17 @@
           {
             "mid": "0x0002",
             "name": "Health Server"
-          },
-          {
-            "mid": "0x0001",
-            "name": "Configuration Client"
           }
         ],
         "vendor_models": [
           {
             "name": "BLOB ID Client",
             "mid": "0x2001",
+            "cid": "0x1000"
+          },
+          {
+            "name": "Server Address",
+            "mid": "0x2003",
             "cid": "0x1000"
           }
         ]

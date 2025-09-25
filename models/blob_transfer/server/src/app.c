@@ -27,10 +27,16 @@
  * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
+
+/* System header */
+#include <stdio.h>
+#include <string.h>
+
 #include "em_common.h"
 #include "app_assert.h"
 #include "sl_status.h"
 #include "app.h"
+#include "gatt_db.h"
 
 #include "sl_btmesh_api.h"
 #include "sl_bt_api.h"
@@ -39,6 +45,7 @@
 #include "dmd.h"
 
 /* Buttons and LEDs headers */
+#include "sl_simple_button.h"
 #include "sl_simple_button_instances.h"
 
 #include "sl_btmesh_blob_transfer_server.h"
@@ -54,13 +61,31 @@
 
 static GLIB_Context_t glibContext;
 
-// The advertising set handle allocated from Bluetooth stack.
-static uint8_t advertising_set_handle = 0xff;
+#define BUTTON_0                       0
 
+/// Length of the display name buffer
+#define NAME_BUF_LEN  18
+char name[NAME_BUF_LEN];
+
+#define NETWORK_KEY                 {0x23, 0x98, 0xdf, 0xa5, 0x09, 0x3e, 0x74, 0xbb, 0xc2, 0x45, 0x1f, 0xae, 0xea, 0xd7, 0x67, 0xcd}
+#define APPLICATION_KEY             {0x16, 0x39, 0x38, 0x03, 0x9b, 0x8d, 0x8a, 0x20, 0x81, 0x60, 0xa7, 0x93, 0x33, 0x3d, 0x03, 0x61}
+#define DEVICE_KEY                  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+
+#define UADDR_ELEM_BITS             4
+#define UADDR_RSVD_BITS             1
+
+#define GRP_ADDR_BLOB               0xC001
+#define GRP_ADDR_BLOB_ID            0xC002
+#define GRP_ADDR_SERVER_ADDR        0xC003
+
+static uint16_t address;
+static uint16_t appkey_index = 0x0;
+static const uint8_t network_id = 0x0;
 static const uint8_t vendor_model_elem_index = 0x0;
-static const uint8_t blob_server_model_elem_index = 0x0;
 
-static const uint8_t client_device_id[] = "ClientDevice";
+static const uint8_t blob_id_server_opcodes[] = {0x0};
+static const uint8_t server_address_opcodes[] = {0x1};
+
 uint16_t data_id = 0;
 uint8_t data[2048];
 
@@ -82,21 +107,25 @@ SL_WEAK void app_init(void)
   // Put your additional application init code here!                         //
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
-  app_log("boot\r\n");
-  handle_reset_conditions();
-  uint32_t status;
+  app_log("Boot\r\n");
 
-  /* Enable the memory lcd */
-  status = sl_board_enable_display();
-  EFM_ASSERT(status == SL_STATUS_OK);
+  // Enable buttons
+  sl_simple_button_enable(&sl_button_btn0);
+#ifndef SINGLE_BUTTON
+  sl_simple_button_enable(&sl_button_btn1);
+#endif // SINGLE_BUTTON
+  // Wait
+  sl_sleeptimer_delay_millisecond(1);
+
+  uint32_t sc;
 
   /* Initialize the DMD support for memory lcd display */
-  status = DMD_init(0);
-  EFM_ASSERT(status == DMD_OK);
+  sc = DMD_init(0);
+  app_assert_status_f(sc, "DMD_init failed");
 
   /* Initialize the glib context */
-  status = GLIB_contextInit(&glibContext);
-  EFM_ASSERT(status == GLIB_OK);
+  sc = GLIB_contextInit(&glibContext);
+  app_assert_status_f(sc, "GLIB_contextInit failed");
 
   glibContext.backgroundColor = White;
   glibContext.foregroundColor = Black;
@@ -106,6 +135,8 @@ SL_WEAK void app_init(void)
 
   /* Use Narrow font */
   GLIB_setFont(&glibContext, (GLIB_Font_t *) &GLIB_FontNarrow6x8);
+
+  DMD_updateDisplay();
 }
 
 /*******************************************************************************
@@ -118,6 +149,31 @@ SL_WEAK void app_process_action(void)
   // This is called infinitely.                                              //
   // Do not call blocking functions from here!                               //
   /////////////////////////////////////////////////////////////////////////////
+}
+
+/***************************************************************************//**
+ * Set device name in the GATT database. A unique name is generated using
+ * the two last bytes from the Bluetooth address of this device. Name is also
+ * displayed on the LCD.
+ *
+ * @param[in] addr  Pointer to Bluetooth address.
+ ******************************************************************************/
+static void set_device_name(bd_addr *addr)
+{
+  sl_status_t sc;
+
+  // Create unique device name using the last two bytes of the Bluetooth address
+  snprintf(name, NAME_BUF_LEN, "blob_server %02x:%02x",
+           addr->addr[1],
+           addr->addr[0]);
+
+  app_log("Device name: '%s'\r\n", name);
+
+  sc = sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
+                                               0,
+                                               strlen(name),
+                                               (uint8_t *)name);
+  app_assert_status_f(sc, "sl_bt_gatt_server_write_attribute_value failed");
 }
 
 /*******************************************************************************
@@ -147,6 +203,25 @@ static bool handle_reset_conditions(void)
   return true;
 }
 
+/***************************************************************************//**
+ * Handling of boot event.
+ * If needed it performs factory reset. In other case it sets device name
+ * and initialize mesh node.
+ ******************************************************************************/
+static void handle_boot_event(void)
+{
+  sl_status_t sc;
+  bd_addr address;
+  uint8_t address_type;
+  // Check reset conditions and continue ifnot reset.
+  if (handle_reset_conditions()) {
+    sc = sl_bt_system_get_identity_address(&address, &address_type);
+    app_assert_status_f(sc, "Failed to get Bluetooth address\n");
+    set_device_name(&address);
+  }
+}
+
+
 /**************************************************************************//**
  * Bluetooth stack event handler.
  * This overrides the dummy weak implementation.
@@ -155,40 +230,68 @@ static bool handle_reset_conditions(void)
  *****************************************************************************/
 void sl_bt_on_event(struct sl_bt_msg *evt)
 {
-  sl_status_t sc;
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_bt_evt_system_boot_id:
-      // Initialize Mesh stack in Node operation mode,
-      // wait for initialized event
-      //sc = sl_btmesh_node_init();
-      //app_assert_status_f(sc, "Failed to init node");
+      handle_boot_event();
 
-      bd_addr address;
-      uint8_t address_type;
-      sc = sl_bt_system_get_identity_address(&address, &address_type);
+      aes_key_128 netkey = {NETWORK_KEY};
+      aes_key_128 appkey = {APPLICATION_KEY};
+      aes_key_128 devkey = {DEVICE_KEY};
+      sl_status_t sc;
+      uint32_t count;
+      bd_addr btaddr;
+      uint8_t type;
+
+      app_log("Self provisioning\r\n");
+
+      // Network key
+      count = 0;
+      sc = sl_btmesh_node_get_key_count(0, &count);
+      app_assert_status_f(sc, "sl_btmesh_node_get_key_count failed");
+
+      sc = sl_bt_system_get_identity_address(&btaddr, &type);
       app_assert_status_f(sc, "sl_bt_system_get_identity_address failed");
 
-      app_log("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                 address_type ? "static random" : "public device",
-                 address.addr[5],
-                 address.addr[4],
-                 address.addr[3],
-                 address.addr[2],
-                 address.addr[1],
-                 address.addr[0]);
+      address = *(uint16_t *)&btaddr.addr[0] ^
+                *(uint16_t *)&btaddr.addr[2] ^
+                *(uint16_t *)&btaddr.addr[4];
+      address &= (0xFFFF<<UADDR_ELEM_BITS);
+      address &= (0xFFFF>>(UADDR_RSVD_BITS+1));
+
+      if (count == 0) {
+          // Set provisioning data
+          sc = sl_btmesh_node_set_provisioning_data(devkey,
+                                                    netkey,
+                                                    network_id,
+                                                    0,
+                                                    address,
+                                                    0);
+          app_assert_status_f(sc, "sl_btmesh_node_set_provisioning_data failed");
+
+          app_log("Node self provisioned, address = %04x\r\n", address);
+      }
+
+      // Application key
+      count = 0;
+      sc = sl_btmesh_node_get_key_count(1, &count);
+      app_assert_status_f(sc, "sl_btmesh_node_get_key_count failed");
+
+      if (count == 0) {
+          // Add application key
+          sc = sl_btmesh_test_add_local_key(1,
+                                            appkey,
+                                            appkey_index,
+                                            network_id);
+          app_assert_status_f(sc, "sl_btmesh_test_add_local_key failed");
+
+
+          app_log("Node self configured, resetting\r\n");
+          sl_bt_system_reboot();
+      }
       break;
     case sl_bt_evt_scanner_legacy_advertisement_report_id:
-      /*app_log("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-              evt->data.evt_scanner_scan_report.address_type ? "static random" : "public device",
-              evt->data.evt_scanner_scan_report.address.addr[5],
-              evt->data.evt_scanner_scan_report.address.addr[4],
-              evt->data.evt_scanner_scan_report.address.addr[3],
-              evt->data.evt_scanner_scan_report.address.addr[2],
-              evt->data.evt_scanner_scan_report.address.addr[1],
-              evt->data.evt_scanner_scan_report.address.addr[0]);*/
       break;
     case sl_bt_evt_advertiser_timeout_id:
-      // Ignore advertiser timeout events
       break;
     // -------------------------------
     // Default event handler.
@@ -208,48 +311,90 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
  *****************************************************************************/
 void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 {
-  sl_status_t sc;
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_btmesh_evt_node_initialized_id:
-      app_log("node init\r\n");
-
-      uint8_t opcodes[] = {0};
+      sl_status_t sc;
+      // Vendor Model Init for the BLOB ID
       sc = sl_btmesh_vendor_model_init(vendor_model_elem_index,
                                        0x1000,
                                        0x2000,
+                                       0,
+                                       1,
+                                       blob_id_server_opcodes);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_vendor_model_init: failed 0x%.2lx\r\n", sc);
+
+      // Bind Vendor Model to Appkey
+      sc = sl_btmesh_test_bind_local_model_app(vendor_model_elem_index,
+                                               appkey_index,
+                                               0x1000,
+                                               0x2000);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
+
+      // Subscribing configuration
+      sc = sl_btmesh_test_add_local_model_sub(vendor_model_elem_index,
+                                              0x1000,
+                                              0x2000,
+                                              GRP_ADDR_BLOB_ID);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_add_local_model_sub: failed 0x%.2lx\r\n", sc);
+
+      // Bind the BLOB Model to Appkey
+      sc = sl_btmesh_test_bind_local_model_app(vendor_model_elem_index,
+                                               appkey_index,
+                                               0xFFFF,
+                                               0x1400);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
+
+      // Subscribing configuration
+      sc = sl_btmesh_test_add_local_model_sub(vendor_model_elem_index,
+                                              0xFFFF,
+                                              0x1400,
+                                              GRP_ADDR_BLOB);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_add_local_model_sub: failed 0x%.2lx\r\n", sc);
+
+      // Vendor Model Init for the Server Address
+      sc = sl_btmesh_vendor_model_init(vendor_model_elem_index,
+                                       0x1000,
+                                       0x2002,
                                        1,
                                        1,
-                                       opcodes);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_vendor_model_init: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, sl_btmesh_vendor_model_init: 0x%x\r\n", 0x2000);
-      }
+                                       server_address_opcodes);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_vendor_model_init: failed 0x%.2lx\r\n", sc);
 
-      if (!evt->data.evt_node_initialized.provisioned) {
-        // The Node is now initialized,
-        // start unprovisioned Beaconing using PB-ADV and PB-GATT Bearers
-        //sc = sl_btmesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
-        //app_assert_status_f(sc, "Failed to start unprovisioned beaconing\n");
-        start_advertising();
-      }
-      break;
-    case sl_btmesh_evt_node_provisioning_started_id:
-      sc = sl_bt_advertiser_stop(advertising_set_handle);
-      app_assert_status_f(sc, "sl_bt_advertiser_stop failed");
-      break;
-    case sl_btmesh_evt_node_provisioned_id:
-      app_log("%x\r\n", evt->data.evt_node_provisioned.address);
-      break;
-    case sl_btmesh_evt_node_key_added_id:
-      app_log("sl_btmesh_evt_node_key_added_id\r\n");
-      uint8_t type = evt->data.evt_node_key_added.type;
-      if(type == 0x01) {
-        app_log("appkey added\r\n");
-      }
-      break;
+      // Bind Vendor Model to Appkey
+      sc = sl_btmesh_test_bind_local_model_app(vendor_model_elem_index,
+                                               appkey_index,
+                                               0x1000,
+                                               0x2002);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
 
+      // Publish configuration
+      sc = sl_btmesh_test_set_local_model_pub(vendor_model_elem_index,
+                                              appkey_index,
+                                              0x1000,
+                                              0x2002,
+                                              GRP_ADDR_SERVER_ADDR,
+                                              3,
+                                              0,
+                                              0,
+                                              0);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_set_local_model_pub: failed 0x%.2lx\r\n", sc);
+
+      uint16_t addr_handle;
+      sc = sl_btmesh_vendor_model_send_tracked(GRP_ADDR_SERVER_ADDR,
+                                               0,
+                                               appkey_index,
+                                               vendor_model_elem_index,
+                                               0x1000,
+                                               0x2002,
+                                               0,
+                                               0,
+                                               server_address_opcodes[0],
+                                               1,
+                                               2,
+                                               (uint8_t*)&address,
+                                               &addr_handle);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_vendor_model_send_tracked: failed 0x%.2lx\r\n", sc);
+      break;
     case sl_btmesh_evt_mbt_server_chunk_id:
       for(uint16_t index = 0; index < evt->data.evt_mbt_server_chunk.data.len; index++) {
         data[evt->data.evt_mbt_server_chunk.total_offset + index] = evt->data.evt_mbt_server_chunk.data.data[index];
@@ -285,15 +430,18 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
       DMD_updateDisplay();
     break;
     case sl_btmesh_evt_vendor_model_receive_id:
-      app_log("sl_btmesh_evt_vendor_model_receive_id: %x\r\n", evt->data.evt_vendor_model_receive.payload.data[0]);
+      if(evt->data.evt_vendor_model_receive.vendor_id == 0x1000 &&
+         evt->data.evt_vendor_model_receive.model_id == 0x2000) {
+        app_log("sl_btmesh_evt_vendor_model_receive_id: %x\r\n", evt->data.evt_vendor_model_receive.payload.data[0]);
 
-      blob_id.data[0] = evt->data.evt_vendor_model_receive.payload.data[0];
+        blob_id.data[0] = evt->data.evt_vendor_model_receive.payload.data[0];
 
-      sc = sl_btmesh_blob_transfer_server_start(blob_server_model_elem_index,
-                                                &blob_id,
-                                                10,
-                                                5);
-      app_assert_status_f(sc, "sl_btmesh_blob_transfer_server_start failed\n");
+        sc = sl_btmesh_blob_transfer_server_start(vendor_model_elem_index,
+                                                  &blob_id,
+                                                  10,
+                                                  5);
+        app_assert_status_f(sc, "sl_btmesh_blob_transfer_server_start failed\n");
+      }
       break;
     ///////////////////////////////////////////////////////////////////////////
     // Add additional event handlers here as your application requires!      //
@@ -307,30 +455,4 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
                                                                          (unsigned int)((SL_BT_MSG_ID(evt->header) >> 24) & 0xFF) );
       break;
   }
-}
-
-// We are using the older advertiser API, as the newer one is not yet Mesh compatible!
-void start_advertising() {
-  sl_status_t sc;
-  sc = sl_bt_advertiser_create_set(&advertising_set_handle);
-  app_assert_status_f(sc, "sl_bt_advertiser_create_set failed");
-  sc = sl_bt_legacy_advertiser_set_data(advertising_set_handle,
-                                        0,
-                                        12,
-                                        client_device_id);
-  app_assert_status_f(sc, "sl_bt_advertiser_set_data failed");
-
-  // Set advertising interval to 100ms.
-  sc = sl_bt_advertiser_set_timing(
-    advertising_set_handle,
-    160, // min. adv. interval (milliseconds * 1.6)
-    160, // max. adv. interval (milliseconds * 1.6)
-    0,   // adv. duration
-    0);  // max. num. adv. events
-  app_assert_status_f(sc, "sl_bt_advertiser_set_timing failed");
-
-  // Start advertising and enable connections.
-  sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
-                                     sl_bt_advertiser_non_connectable);
-  app_assert_status_f(sc, "sl_bt_advertiser_start failed");
 }

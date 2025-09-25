@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Uploader</title>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/caman@4.1.2/dist/caman.full.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    canvas { border: 1px solid #ccc; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Upload Image</h2>
+  <button id="connect" onclick="_connectBLOBClient()">Connect</button>
+  <input type="file" id="upload" accept="image/*"/><br>
+  <canvas id="canvas" width="128" height="128"></canvas><br>
+  <button id="upload" onclick="_uploadImage()">Upload</button>
+  <button id="propagate" onclick="_propagateImage()">Propagate</button>
+
+  <script>
+    const upload = document.getElementById('upload');
+    const canvas = document.getElementById('canvas');
+    let NEW_IMAGE = 0x1;
+    let PROPAGATE_IMAGE = 0x2;
+    let image_service = '2d24508e-c3eb-46c0-9b81-7513f7ec116d';
+    let image_characteristic = '3136e04e-266d-4000-80aa-f57c2abc2939';
+    let imageCharacteristic = null;
+
+    async function _sendImage(byteArray) {
+        if (imageCharacteristic) {
+            await imageCharacteristic.writeValueWithResponse(new Uint8Array([NEW_IMAGE]))
+            .catch(error => {
+                console.log(error);
+            });
+            for (let chunkStartIndex = 0; chunkStartIndex < byteArray.length; chunkStartIndex += 200) {
+                await imageCharacteristic.writeValueWithResponse(byteArray.slice(chunkStartIndex, chunkStartIndex + 200))
+                .catch(error => {
+                    console.log(error);
+                });
+                console.log(chunkStartIndex)
+            }
+        }
+    }
+
+    function _propagateImage() {
+        if (imageCharacteristic) {
+            imageCharacteristic.writeValueWithResponse(new Uint8Array([PROPAGATE_IMAGE]))
+            .catch(error => {
+                console.log(error);
+            });
+        }
+    }
+
+    function _uploadImage() {
+
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const byteArray = new Uint8Array((canvas.width * canvas.height) / 8);
+
+        bitIndex = 0;
+        byteIndex = 0;
+        for (let pixelIndex = 0; pixelIndex < imageData.length; pixelIndex += 4) {
+            const pixelR = imageData[pixelIndex];     // Red channel
+            const pixelG = imageData[pixelIndex + 1]; // Green channel
+            const pixelB = imageData[pixelIndex + 2]; // Blue channel
+
+            // Simple brightness check: average of RGB
+            const pixelBrightness = (pixelR + pixelG + pixelB) / 3;
+
+            // Threshold to decide black or white
+            if (pixelBrightness > 128) {
+                byteArray[byteIndex] |= (1 << bitIndex)
+            } else {
+                byteArray[byteIndex] &= ~(1 << bitIndex)
+            }
+
+            bitIndex ++
+            if(bitIndex == 8) {
+                bitIndex = 0;
+                byteIndex++;
+            }
+        }
+
+        _sendImage(byteArray);
+    }
+
+    function _onBLOBClientDisconnected() {
+        imageCharacteristic = null;
+    }
+
+    function _connectBLOBClient() {
+        // Check if Bluetooth is available
+        navigator.bluetooth.getAvailability()
+        .then(available => {
+            if (!available) {
+                console.log('Bluetooth is not available on this device.');
+                return;
+            }
+
+            let BLEoptions = {
+                //acceptAllDevices: true,
+                filters: [{namePrefix: 'blob'}], // Full name not gonna fit
+                optionalServices: [image_service]
+            };
+
+            navigator.bluetooth.requestDevice(BLEoptions)
+            .then(device => {
+                console.log('Name - ' + device.name);
+                console.log('ID - ' + device.id);
+
+                device.addEventListener('gattserverdisconnected', _onBLOBClientDisconnected);
+
+                return device.gatt.connect();
+            })
+            .then(server => {
+                console.log('Getting GAP Service...');
+                return server.getPrimaryService(image_service);
+            })
+            .then(service => {
+                console.log('Getting GAP Characteristics...');
+                return service.getCharacteristics();
+            })
+            .then(characteristics => {
+                characteristics.forEach(characteristic => {
+                    switch (characteristic.uuid) {
+                        case BluetoothUUID.getCharacteristic(image_characteristic): {
+                            imageCharacteristic = characteristic;
+                        } break;
+                        default: console.log('Unknown Characteristic - ' + characteristic.uuid);
+                    }
+                });
+            })
+            .catch(error => {
+                console.log(error);
+            });
+        })
+        .catch(error => {
+            console.log(error);
+        });
+    }
+
+    upload.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, 128, 128); // Resize to 128x128
+
+          // Apply grayscale filter using CamanJS
+          Caman('#canvas', function () {
+            this.reloadCanvasData();
+            this.greyscale();
+            this.threshold(128); // Adjust threshold value as needed
+            this.render();
+          });
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>
