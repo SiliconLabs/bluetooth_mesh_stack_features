@@ -104,4 +104,12 @@ This project README assumes that the reader is familiar with the usage of Silico
 
   ![server_log_2](images/server_log_2.png)
 
+## Troubleshooting
+
+  - Factory reset can be accomplished with pressing BTN0 while resetting the device
+  - On Windows operating systems there are certain caveats, that one should pay attention to:
+    - Preliminary pairing and reconnection might be necessary between the dev board and the computer
+    - The operating system might show a different name for the dev board, due to name-caching
+    - The browser might find the dev board easier, if it is inspected first on chrome://bluetooth-internals/#devices
+
 ---

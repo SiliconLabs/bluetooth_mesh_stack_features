@@ -94,6 +94,8 @@ other_file:
     directory: images
   - path: ../images/server_log_2.png
     directory: images
+  - path: ../web_app/image_uploader.html
+    directory: web_app
 
 configuration:
   - name: EMDRV_DMADRV_DMA_CH_COUNT
