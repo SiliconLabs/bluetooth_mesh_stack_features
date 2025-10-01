@@ -47,4 +47,16 @@
       </properties>
     </characteristic>
   </service>
+
+  <!--Image Service-->
+  <service advertise="true" id="image_service" name="Image Service" requirement="mandatory" sourceId="" type="primary" uuid="2d24508e-c3eb-46c0-9b81-7513f7ec116d">
+
+    <!--Image Characteristic-->
+    <characteristic const="false" id="image_characteristic" name="Image Characteristic" sourceId="" uuid="3136e04e-266d-4000-80aa-f57c2abc2939">
+      <value length="0" type="user" variable_length="false">00</value>
+      <properties>
+        <write authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+  </service>
 </gatt>

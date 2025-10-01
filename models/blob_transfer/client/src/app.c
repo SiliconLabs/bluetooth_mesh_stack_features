@@ -3,7 +3,7 @@
  * @brief Core application logic.
  *******************************************************************************
  * # License
- * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2024 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -27,20 +27,24 @@
  * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
+
+/* System header */
 #include <stdio.h>
-#include "em_common.h"
+#include <string.h>
+
 #include "app_assert.h"
 #include "sl_status.h"
 #include "app.h"
+#include "sl_main_init.h"
+#include "gatt_db.h"
 
 #include "sl_btmesh_api.h"
 #include "sl_bt_api.h"
-#include "sl_board_control.h"
+
 #include "glib.h"
 #include "dmd.h"
 
 /* Buttons and LEDs headers */
-#include "app_button_press.h"
 #include "sl_simple_button.h"
 #include "sl_simple_button_instances.h"
 
@@ -50,80 +54,72 @@
 #include "sl_btmesh_factory_reset.h"
 #endif // SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
 
-/// Advertising Provisioning Bearer
-#define PB_ADV                         0x1
-/// GATT Provisioning Bearer
-#define PB_GATT                        0x2
-
-#define BUTTON_0                       0
-
-#define CLIENT_LIMIT                   4
-
-#define GRP_ADDR_BLOB                  0xC001
-#define GRP_ADDR_BLOB_ID               0xC002
-
 static GLIB_Context_t glibContext;
 
+/// Length of the display name buffer
+#define NAME_BUF_LEN  18
+char name[NAME_BUF_LEN];
+
+#define NEW_IMAGE 0x1
+#define PROPAGATE_IMAGE 0x2
+
 uint8_t row, column = 0;
+uint16_t data_id = 0;
+uint8_t data[2048];
+
+// The advertising set handle allocated from Bluetooth stack.
+static uint8_t advertising_set_handle = 0xff;
+
+#define SERVER_LIMIT                4
+
+#define NETWORK_KEY                 {0x23, 0x98, 0xdf, 0xa5, 0x09, 0x3e, 0x74, 0xbb, 0xc2, 0x45, 0x1f, 0xae, 0xea, 0xd7, 0x67, 0xcd}
+#define APPLICATION_KEY             {0x16, 0x39, 0x38, 0x03, 0x9b, 0x8d, 0x8a, 0x20, 0x81, 0x60, 0xa7, 0x93, 0x33, 0x3d, 0x03, 0x61}
+#define DEVICE_KEY                  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+
+#define UADDR_ELEM_BITS             4
+#define UADDR_RSVD_BITS             1
+
+#define GRP_ADDR_BLOB               0xC001
+#define GRP_ADDR_BLOB_ID            0xC002
+#define GRP_ADDR_SERVER_ADDR        0xC003
 
 static uint16_t appkey_index = 0x0;
 static const uint8_t network_id = 0x0;
-static const uint16_t enc_netkey_index = 0x0;
-static const uint8_t fixed_netkey[16] = {0x23, 0x98, 0xdf, 0xa5, 0x09, 0x3e, 0x74, 0xbb, 0xc2, 0x45, 0x1f, 0xae, 0xea, 0xd7, 0x67, 0xcd};
-static const uint8_t fixed_appkey[16] = {0x16, 0x39, 0x38, 0x03, 0x9b, 0x8d, 0x8a, 0x20, 0x81, 0x60, 0xa7, 0x93, 0x33, 0x3d, 0x03, 0x61};
-
 static const uint8_t vendor_model_elem_index = 0x0;
-static const uint8_t blob_server_model_elem_index = 0x0;
-static const uint8_t blob_client_model_elem_index = 0x1;
+static const uint8_t blob_client_elem_index = 0x1;
 
-static uint16_t provisionee_addr;
-static uuid_128 provisionee_uuid;
+static const uint8_t blob_id_client_opcodes[] = {0x0};
+static const uint8_t server_address_opcodes[] = {0x1};
 
-typedef struct {
-  uuid_128 uuid;
-  bd_addr address;
-  uint8_t is_provisioned;
-  uint16_t primary_element_address;
-} client_device_t;
-
-static const char client_device_id[] = "ClientDevice";
-static const uuid_128 empty_uuid = {{0x00}};
-static const bd_addr empty_addr = {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
-static const client_device_t client_placeholder = {empty_uuid, empty_addr, 0x0, 0x0};
-client_device_t client_list[CLIENT_LIMIT];
-uint8_t servers[CLIENT_LIMIT*2];
-uint8_t servers_size = 0;
-uint16_t data_id = 0;
-
+uint16_t blob_id_handle;
 sl_bt_uuid_64_t blob_id = {{0}};
 uuid_128 virtual_address = {{0}};
-uint8_t data[2048];
 
-static void handle_blob_transfer_client_notification(const sl_btmesh_blob_transfer_client_notification_t *const notification);
-
-/***************************************************************************//**
- * Handles button press and does a factory reset
- *
- * @return true if there is no button press
- ******************************************************************************/
-static bool handle_reset_conditions(void);
+uint8_t servers[SERVER_LIMIT * 2];
+uint8_t servers_length = 0;
 
 /*******************************************************************************
- * Application Init.
+ * Application Early Init
  ******************************************************************************/
-SL_WEAK void app_init(void)
+void app_init_early(void)
+{
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application init code here!                         //
+  // This is called once before the OS is initialized if RTOS is used.       //
+  // This function precedes permanent memory allocations.                    //
+  /////////////////////////////////////////////////////////////////////////////
+}
+
+/**************************************************************************//**
+ * Application Init.
+ *****************************************************************************/
+void app_init(void)
 {
   /////////////////////////////////////////////////////////////////////////////
   // Put your additional application init code here!                         //
   // This is called once during start-up.                                    //
   /////////////////////////////////////////////////////////////////////////////
-  app_log("boot\r\n");
-  handle_reset_conditions();
-
-  // Fill up the server list
-  for(uint8_t index = 0; index < CLIENT_LIMIT; index++) {
-    client_list[index] = client_placeholder;
-  }
+  app_log("Boot\r\n");
 
   // Enable buttons
   sl_simple_button_enable(&sl_button_btn0);
@@ -132,21 +128,16 @@ SL_WEAK void app_init(void)
 #endif // SINGLE_BUTTON
   // Wait
   sl_sleeptimer_delay_millisecond(1);
-  // Enable button presses
-  app_button_press_enable();
 
-  uint32_t status;
-  /* Enable the memory lcd */
-  status = sl_board_enable_display();
-  EFM_ASSERT(status == SL_STATUS_OK);
+  uint32_t sc;
 
   /* Initialize the DMD support for memory lcd display */
-  status = DMD_init(0);
-  EFM_ASSERT(status == DMD_OK);
+  sc = DMD_init(0);
+  app_assert_status_f(sc, "DMD_init failed");
 
   /* Initialize the glib context */
-  status = GLIB_contextInit(&glibContext);
-  EFM_ASSERT(status == GLIB_OK);
+  sc = GLIB_contextInit(&glibContext);
+  app_assert_status_f(sc, "GLIB_contextInit failed");
 
   glibContext.backgroundColor = White;
   glibContext.foregroundColor = Black;
@@ -160,71 +151,86 @@ SL_WEAK void app_init(void)
   DMD_updateDisplay();
 }
 
-/*******************************************************************************
+/**************************************************************************//**
  * Application Process Action.
- ******************************************************************************/
-SL_WEAK void app_process_action(void)
+ *****************************************************************************/
+void app_process_action(void)
 {
-  /////////////////////////////////////////////////////////////////////////////
-  // Put your additional application code here!                              //
-  // This is called infinitely.                                              //
-  // Do not call blocking functions from here!                               //
-  /////////////////////////////////////////////////////////////////////////////
-
-  int rec = -1;
-  while((rec = getchar()) != -1) {
-    if(rec == 0xAA) {
-      GLIB_clear(&glibContext);
-      row = 0;
-      column = 0;
-      data_id = 0;
-      return;
-    }
-
-    data[data_id] = rec;
-
-    for(uint8_t bit = 0; bit < 8; bit++) {
-      if(!(data[data_id] & (1 << bit))) GLIB_drawPixel(&glibContext, column, row);
-      column++;
-    }
-
-    data_id++;
-
-    if(column == 128) {
-      column = 0;
-      row++;
-    }
-    if(row == 128) {
-      DMD_updateDisplay();
-    }
+  if (app_is_process_required()) {
+    /////////////////////////////////////////////////////////////////////////////
+    // Put your additional application code here!                              //
+    // This will run each time app_proceed() is called.                        //
+    // Do not call blocking functions from here!                               //
+    /////////////////////////////////////////////////////////////////////////////
   }
 }
 
-/*******************************************************************************
- * Handles button press and does a factory reset
+/***************************************************************************//**
+ * Set device name in the GATT database. A unique name is generated using
+ * the two last bytes from the Bluetooth address of this device. Name is also
+ * displayed on the LCD.
+ *
+ * @param[in] addr  Pointer to Bluetooth address.
  ******************************************************************************/
-static bool handle_reset_conditions(void)
+static void set_device_name(bd_addr *addr)
 {
-#ifdef SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
+  sl_status_t sc;
+
+  // Create unique device name using the last two bytes of the Bluetooth address
+  snprintf(name, NAME_BUF_LEN, "blob_client %02x:%02x",
+           addr->addr[1],
+           addr->addr[0]);
+
+  app_log("Device name: '%s'\r\n", name);
+
+  sc = sl_bt_gatt_server_write_attribute_value(gattdb_device_name,
+                                               0,
+                                               strlen(name),
+                                               (uint8_t *)name);
+  app_assert_status_f(sc, "sl_bt_gatt_server_write_attribute_value failed");
+}
+
+/***************************************************************************//**
+ * Handles button press and does a factory reset
+ *
+ * @return true if there is no button press
+ ******************************************************************************/
+bool handle_reset_conditions(void)
+{
   // If PB0 is held down then do full factory reset
-  if (sl_simple_button_get_state(&sl_button_btn0)
-      == SL_SIMPLE_BUTTON_PRESSED) {
+  if(sl_simple_button_get_state(&sl_button_btn0) == SL_SIMPLE_BUTTON_PRESSED) {
     // Full factory reset
     sl_btmesh_initiate_full_reset();
     return false;
   }
 
-#if SL_SIMPLE_BUTTON_COUNT >= 2
+#ifndef SINGLE_BUTTON
   // If PB1 is held down then do node factory reset
-  if (sl_simple_button_get_state(&sl_button_btn1)
-      == SL_SIMPLE_BUTTON_PRESSED) {
+  if(sl_simple_button_get_state(&sl_button_btn1) == SL_SIMPLE_BUTTON_PRESSED) {
     // Node factory reset
     sl_btmesh_initiate_node_reset();
     return false;
   }
 #endif // SL_CATALOG_BTN1_PRESENT
-#endif // SL_CATALOG_BTMESH_FACTORY_RESET_PRESENT
   return true;
+}
+
+/***************************************************************************//**
+ * Handling of boot event.
+ * If needed it performs factory reset. In other case it sets device name
+ * and initialize mesh node.
+ ******************************************************************************/
+static void handle_boot_event(void)
+{
+  sl_status_t sc;
+  bd_addr address;
+  uint8_t address_type;
+  // Check reset conditions and continue ifnot reset.
+  if (handle_reset_conditions()) {
+    sc = sl_bt_system_get_identity_address(&address, &address_type);
+    app_assert_status_f(sc, "Failed to get Bluetooth address\n");
+    set_device_name(&address);
+  }
 }
 
 /**************************************************************************//**
@@ -235,45 +241,152 @@ static bool handle_reset_conditions(void)
  *****************************************************************************/
 void sl_bt_on_event(struct sl_bt_msg *evt)
 {
-  //sl_status_t sc;
   switch (SL_BT_MSG_ID(evt->header)) {
     case sl_bt_evt_system_boot_id:
-      // Init the device as provisioner
-      //sc = sl_btmesh_prov_init();
-      //app_assert_status_f(sc, "sl_btmesh_prov_init failed\r\n");
+      handle_boot_event();
+
+      aes_key_128 netkey = {NETWORK_KEY};
+      aes_key_128 appkey = {APPLICATION_KEY};
+      aes_key_128 devkey = {DEVICE_KEY};
+      sl_status_t sc;
+      uint32_t count;
+      bd_addr btaddr;
+      uint8_t type;
+
+      app_log("Self provisioning\r\n");
+
+      // Network key
+      count = 0;
+      sc = sl_btmesh_node_get_key_count(0, &count);
+      app_assert_status_f(sc, "sl_btmesh_node_get_key_count failed");
+
+      sc = sl_bt_system_get_identity_address(&btaddr, &type);
+      app_assert_status_f(sc, "sl_bt_system_get_identity_address failed");
+
+      uint16_t addr = *(uint16_t *)&btaddr.addr[0] ^
+                     *(uint16_t *)&btaddr.addr[2] ^
+                     *(uint16_t *)&btaddr.addr[4];
+      addr &= (0xFFFF<<UADDR_ELEM_BITS);
+      addr &= (0xFFFF>>(UADDR_RSVD_BITS+1));
+
+      if (count == 0) {
+          // Set provisioning data
+          sc = sl_btmesh_node_set_provisioning_data(devkey,
+                                                    netkey,
+                                                    network_id,
+                                                    0,
+                                                    addr,
+                                                    0);
+          app_assert_status_f(sc, "sl_btmesh_node_set_provisioning_data failed");
+
+          app_log("Node self provisioned, address = %04x\r\n", addr);
+      }
+
+      // Application key
+      count = 0;
+      sc = sl_btmesh_node_get_key_count(1, &count);
+      app_assert_status_f(sc, "sl_btmesh_node_get_key_count failed");
+
+      if (count == 0) {
+          // Add application key
+          sc = sl_btmesh_test_add_local_key(1,
+                                            appkey,
+                                            appkey_index,
+                                            network_id);
+          app_assert_status_f(sc, "sl_btmesh_test_add_local_key failed");
+
+
+          app_log("Node self configured, resetting\r\n");
+          sl_bt_system_reboot();
+      }
+
+      sc = sl_bt_advertiser_create_set(&advertising_set_handle);
+      app_assert_status_f(sc, "sl_bt_advertiser_create_set failed");
+
+      sc = sl_bt_legacy_advertiser_generate_data(advertising_set_handle,
+                                                 sl_bt_advertiser_general_discoverable);
+      app_assert_status_f(sc, "sl_bt_legacy_advertiser_generate_data failed");
+
+      // Set advertising interval to 100ms.
+      sc = sl_bt_advertiser_set_timing(advertising_set_handle,
+                                       160, // min. adv. interval (milliseconds * 1.6)
+                                       160, // max. adv. interval (milliseconds * 1.6)
+                                       0,   // adv. duration
+                                       0);  // max. num. adv. events
+      app_assert_status_f(sc, "sl_bt_advertiser_set_timing failed");
+
+      // Start advertising and enable connections.
+      sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
+                                         sl_bt_legacy_advertiser_connectable);
+      app_assert_status_f(sc, "sl_bt_advertiser_start failed");
       break;
-    case sl_bt_evt_scanner_legacy_advertisement_report_id:
-      /*app_log_debug("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                    evt->data.evt_scanner_scan_report.address_type ? "static random" : "public device",
-                    evt->data.evt_scanner_scan_report.address.addr[5],
-                    evt->data.evt_scanner_scan_report.address.addr[4],
-                    evt->data.evt_scanner_scan_report.address.addr[3],
-                    evt->data.evt_scanner_scan_report.address.addr[2],
-                    evt->data.evt_scanner_scan_report.address.addr[1],
-                    evt->data.evt_scanner_scan_report.address.addr[0]);*/
-      // We found a client device
-      if(!strcmp(client_device_id, (char*)evt->data.evt_scanner_legacy_advertisement_report.data.data)) {
-        app_log("Client device noticed\r\n");
-        for(uint8_t index = 0; index < CLIENT_LIMIT; index++) {
-          // We already have this device in list
-          if(!memcmp(evt->data.evt_scanner_legacy_advertisement_report.address.addr, client_list[index].address.addr, sizeof(evt->data.evt_scanner_legacy_advertisement_report.address.addr))) break;
-          // We found an empty space in the list
-          if(!memcmp(empty_addr.addr, client_list[index].address.addr, sizeof(empty_addr.addr))) {
-            // Add the newly-found device to our list
-              client_list[index].address = evt->data.evt_scanner_legacy_advertisement_report.address;
-            break;
+    ///////////////////////////////////////////////////////////////////////////
+    // Add additional event handlers here as your application requires!      //
+    ///////////////////////////////////////////////////////////////////////////
+    case sl_bt_evt_connection_opened_id:
+      app_log("Connection opened\r\n");
+      break;
+    case sl_bt_evt_connection_closed_id:
+      app_log("Connection closed\r\n");
+
+      // Restart advertising.
+      sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
+                                         sl_bt_legacy_advertiser_connectable);
+      app_assert_status_f(sc, "sl_bt_advertiser_start failed");
+      break;
+    case sl_bt_evt_gatt_server_user_write_request_id:
+      if(evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_image_characteristic) {
+          if(evt->data.evt_gatt_server_user_write_request.value.len == 1) {
+             switch(evt->data.evt_gatt_server_user_write_request.value.data[0]) {
+               case NEW_IMAGE:
+                 GLIB_clear(&glibContext);
+                 row = 0;
+                 column = 0;
+                 data_id = 0;
+               break;
+               case PROPAGATE_IMAGE:
+                 send_blob_id();
+               break;
+             }
+          } else {
+
+              for(uint8_t byte = 0; byte < evt->data.evt_gatt_server_user_write_request.value.len; byte++) {
+
+                  data[data_id] = evt->data.evt_gatt_server_user_write_request.value.data[byte];
+
+                  for(uint8_t bit = 0; bit < 8; bit++) {
+                    if(!(data[data_id] & (1 << bit))) GLIB_drawPixel(&glibContext, column, row);
+                    column++;
+                  }
+
+                  data_id++;
+
+                  if(column == 128) {
+                    column = 0;
+                    row++;
+                  }
+                  if(row == 128) {
+                    DMD_updateDisplay();
+                  }
+              }
           }
-          app_log_warning("client_list full\r\n");
-        }
+
+          sc = sl_bt_gatt_server_send_user_write_response(evt->data.evt_gatt_server_user_write_request.connection,
+                                                          evt->data.evt_gatt_server_user_write_request.characteristic,
+                                                          SL_STATUS_OK);
+          app_assert_status_f(sc, "sl_bt_gatt_server_send_user_write_response failed");
       }
       break;
-    case sl_bt_evt_advertiser_timeout_id:
-      // Ignore advertiser timeout events
+    case sl_bt_evt_scanner_legacy_advertisement_report_id:
       break;
+    case sl_bt_evt_advertiser_timeout_id:
+      break;
+    // -------------------------------
+    // Default event handler.
     default:
-      app_log_debug("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", (unsigned int)SL_BT_MSG_ID(evt->header),
-                                                                         (unsigned int)((SL_BT_MSG_ID(evt->header) >> 16) & 0xFF),
-                                                                         (unsigned int)((SL_BT_MSG_ID(evt->header) >> 24) & 0xFF) );
+      app_log("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", (unsigned int)SL_BT_MSG_ID(evt->header),
+                                                                   (unsigned int)((SL_BT_MSG_ID(evt->header) >> 16) & 0xFF),
+                                                                   (unsigned int)((SL_BT_MSG_ID(evt->header) >> 24) & 0xFF));
       break;
   }
 }
@@ -284,99 +397,37 @@ void sl_bt_on_event(struct sl_bt_msg *evt)
  *
  * @param[in] evt Event coming from the Bluetooth Mesh stack.
  *****************************************************************************/
-
-uint32_t handle_bind_1400;
-uint32_t handle_bind_2000;
-uint32_t handle_sub_1400;
-uint32_t handle_sub_2000;
-uint16_t handle_send_blob_id;
-
 void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
 {
-  sl_status_t sc;
-  uint16_t result;
-  uint32_t handle;
-
   switch (SL_BT_MSG_ID(evt->header)) {
-    case sl_btmesh_evt_prov_initialized_id:
-      // Create the network
-      sc = sl_btmesh_prov_create_network(network_id, 16, fixed_netkey);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_prov_create_network: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, netkey id = %x\r\n", network_id);
-      }
-
-      app_log("networks: 0x%x\r\naddress: 0x%x\r\niv_index: 0x%lx\r\n",
-              evt->data.evt_prov_initialized.networks,
-              evt->data.evt_prov_initialized.address,
-              evt->data.evt_prov_initialized.iv_index);
-
-      uint8_t opcodes[] = {0};
+    case sl_btmesh_evt_node_initialized_id:
+      sl_status_t sc;
+      // Vendor Model Init for the BLOB ID
       sc = sl_btmesh_vendor_model_init(vendor_model_elem_index,
                                        0x1000,
                                        0x2001,
                                        1,
                                        1,
-                                       opcodes);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_vendor_model_init: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, sl_btmesh_vendor_model_init: 0x%x\r\n", 0x2001);
-      }
+                                       blob_id_client_opcodes);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_vendor_model_init: failed 0x%.2lx\r\n", sc);
 
-      size_t max_application_key_size = 16;
-      size_t application_key_len = 16;
-      uint8_t application_key[16];
-      sc = sl_btmesh_prov_create_appkey(network_id, appkey_index, 16, fixed_appkey, max_application_key_size, &application_key_len, application_key);
+      // Vendor Model Init for the Server Address
+      sc = sl_btmesh_vendor_model_init(vendor_model_elem_index,
+                                       0x1000,
+                                       0x2003,
+                                       0,
+                                       1,
+                                       server_address_opcodes);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_vendor_model_init: failed 0x%.2lx\r\n", sc);
 
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_prov_create_appkey: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, appkey id = %x\r\n", appkey_index);
-      }
-
-      sc = sl_btmesh_test_bind_local_model_app(blob_client_model_elem_index,
-                                               appkey_index,
-                                               0xFFFF,
-                                               0x1401);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, sl_btmesh_test_bind_local_model_app: 0x%x\r\n", 0x1401);
-      }
-
-      sc = sl_btmesh_test_set_local_model_pub(blob_client_model_elem_index,
-                                              appkey_index,
-                                              0xFFFF,
-                                              0x1401,
-                                              GRP_ADDR_BLOB,
-                                              3,
-                                              0,
-                                              0,
-                                              0);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_test_set_local_model_pub: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, sl_btmesh_test_set_local_model_pub: 0x%x\r\n", 0x1401);
-      }
-
+      // Bind Vendor Model to Appkey
       sc = sl_btmesh_test_bind_local_model_app(vendor_model_elem_index,
                                                appkey_index,
                                                0x1000,
                                                0x2001);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, sl_btmesh_test_bind_local_model_app: 0x%x\r\n", 0x2001);
-      }
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
 
+      // Publish configuration
       sc = sl_btmesh_test_set_local_model_pub(vendor_model_elem_index,
                                               appkey_index,
                                               0x1000,
@@ -386,159 +437,62 @@ void sl_btmesh_on_event(sl_btmesh_msg_t *evt)
                                               0,
                                               0,
                                               0);
-      if(sc != SL_STATUS_OK) {
-        /* Something went wrong */
-        app_log("sl_btmesh_test_set_local_model_pub: failed 0x%.2lx\r\n", sc);
-      } else {
-        app_log("Success, sl_btmesh_test_set_local_model_pub: 0x%x\r\n", 0x2001);
-      }
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_set_local_model_pub: failed 0x%.2lx\r\n", sc);
 
-      /* Scan for unprovisioned beacons */
-      sc = sl_btmesh_prov_scan_unprov_beacons();
-      break;
-    case sl_btmesh_evt_prov_initialization_failed_id:
-      app_log("sl_btmesh_evt_prov_initialization_failed_id: 0x%x ", evt->data.evt_prov_initialization_failed.result);
-      break;
-    case sl_btmesh_evt_prov_unprov_beacon_id:
-      // Unprovisioned device found
-      /*app_log_debug("URI hash: 0x%lx\r\n",evt->data.evt_prov_unprov_beacon.uri_hash);
-      app_log_debug("bearer: 0x%x\r\n",evt->data.evt_prov_unprov_beacon.bearer);
-      app_log_debug("address: 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x\r\n",
-                    evt->data.evt_prov_unprov_beacon.address.addr[0],
-                    evt->data.evt_prov_unprov_beacon.address.addr[1],
-                    evt->data.evt_prov_unprov_beacon.address.addr[2],
-                    evt->data.evt_prov_unprov_beacon.address.addr[3],
-                    evt->data.evt_prov_unprov_beacon.address.addr[4],
-                    evt->data.evt_prov_unprov_beacon.address.addr[5]);*/
+      // Bind the BLOB Model to Appkey
+      sc = sl_btmesh_test_bind_local_model_app(blob_client_elem_index,
+                                               appkey_index,
+                                               0xFFFF,
+                                               0x1401);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
 
-      // Check all the prerecorded device addresses
-      for(uint8_t index = 0; index < CLIENT_LIMIT; index++) {
-        // If we found the address in the server_list, provision the device directly
-        if(!memcmp(evt->data.evt_prov_unprov_beacon.address.addr, client_list[index].address.addr, sizeof(evt->data.evt_prov_unprov_beacon.address.addr))) {
-          if(client_list[index].is_provisioned) break;
-          app_log("Provisioning a Client device\r\n");
-          client_list[index].uuid = evt->data.evt_prov_unprov_beacon.uuid;
-          sc = sl_btmesh_prov_create_provisioning_session(network_id, evt->data.evt_prov_unprov_beacon.uuid, 0);
-          app_assert_status_f(sc, "sl_btmesh_prov_create_provisioning_session failed\r\n");
-          sc = sl_btmesh_prov_provision_adv_device(evt->data.evt_prov_unprov_beacon.uuid);
-          app_assert_status_f(sc, "sl_btmesh_prov_provision_adv_device failed\r\n");
-          client_list[index].is_provisioned = 0x1;
-          break;
-        }
-      }
-      break;
-    case sl_btmesh_evt_prov_device_provisioned_id:
-      app_log_debug("address: %x\r\n", evt->data.evt_prov_device_provisioned.address);
-      provisionee_addr = evt->data.evt_prov_device_provisioned.address;
-      provisionee_uuid = evt->data.evt_prov_device_provisioned.uuid;
-      // Roll through the server_list, if provisioned device is found by uuid, save the primary element address (where the Remote Provisioning Server Model should be)
-      for(uint8_t index = 0; index < CLIENT_LIMIT; index++) {
-        if(!memcmp(provisionee_uuid.data, client_list[index].uuid.data, sizeof(evt->data.evt_prov_unprov_beacon.uuid.data))) {
-          client_list[index].primary_element_address = provisionee_addr;
-          break;
-        }
-      }
-      app_log("New client device provisioned: %x\r\n", provisionee_addr);
+      // Publish configuration
+      sc = sl_btmesh_test_set_local_model_pub(blob_client_elem_index,
+                                              appkey_index,
+                                              0xFFFF,
+                                              0x1401,
+                                              GRP_ADDR_BLOB,
+                                              3,
+                                              0,
+                                              0,
+                                              0);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_set_local_model_pub: failed 0x%.2lx\r\n", sc);
 
-      sc = sl_btmesh_config_client_add_appkey(enc_netkey_index, provisionee_addr, appkey_index, network_id, &handle);
-      if (sc == SL_STATUS_OK) {
-        app_log("Deploying appkey to node 0x%4.4x\r\n", provisionee_addr);
-      } else {
-        app_log("Appkey deployment failed. addr %x, error: %lx\r\n", provisionee_addr, sc);
-      }
-      break;
-    case sl_btmesh_evt_config_client_appkey_status_id:
-      result = evt->data.evt_config_client_appkey_status.result;
-      if(result == SL_STATUS_OK) {
-        app_log(" appkey added\r\n");
+      // Bind Vendor Model to Appkey
+      sc = sl_btmesh_test_bind_local_model_app(vendor_model_elem_index,
+                                               appkey_index,
+                                               0x1000,
+                                               0x2003);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_bind_local_model_app: failed 0x%.2lx\r\n", sc);
 
-        sc = sl_btmesh_config_client_bind_model(enc_netkey_index, provisionee_addr, vendor_model_elem_index, 0x1000, 0x2000, appkey_index, &handle_bind_2000);
-        if (sc == SL_STATUS_OK) {
-          app_log("sl_btmesh_config_client_bind_model to node 0x%4.4x\r\n", provisionee_addr);
-        } else {
-          app_log("sl_btmesh_config_client_bind_model addr %x, error: %lx\r\n", provisionee_addr, sc);
-        }
-      }
+      // Subscribing configuration
+      sc = sl_btmesh_test_add_local_model_sub(vendor_model_elem_index,
+                                              0x1000,
+                                              0x2003,
+                                              GRP_ADDR_SERVER_ADDR);
+      if(sc != SL_STATUS_OK) app_log("sl_btmesh_test_add_local_model_sub: failed 0x%.2lx\r\n", sc);
       break;
-    case sl_btmesh_evt_config_client_binding_status_id:
-      result = evt->data.evt_config_client_binding_status.result;
-      if(result == SL_STATUS_OK) {
-        app_log(" bind complete\r\n");
+    ///////////////////////////////////////////////////////////////////////////
+    // Add additional event handlers here as your application requires!      //
+    ///////////////////////////////////////////////////////////////////////////
 
-        if(evt->data.evt_config_client_binding_status.handle == handle_bind_2000) {
-          sc = sl_btmesh_config_client_add_model_sub(enc_netkey_index, provisionee_addr, vendor_model_elem_index, 0x1000, 0x2000, GRP_ADDR_BLOB_ID, &handle_sub_2000);
-          if (sc == SL_STATUS_OK) {
-            app_log(" waiting sub ack\r\n");
-          } else {
-            app_log("sl_btmesh_config_client_add_model_sub addr %x, error: %lx\r\n", provisionee_addr, sc);
-          }
-        } else {
-          sc = sl_btmesh_config_client_add_model_sub(enc_netkey_index, provisionee_addr, blob_server_model_elem_index, 0xFFFF, 0x1400, GRP_ADDR_BLOB, &handle_sub_1400);
-          if (sc == SL_STATUS_OK) {
-            app_log(" waiting sub ack\r\n");
-          } else {
-            app_log("sl_btmesh_config_client_add_model_sub addr %x, error: %lx\r\n", provisionee_addr, sc);
-          }
-        }
-      } else {
-        app_log(" bind error %x\r\n", result);
-      }
-      break;
-    case sl_btmesh_evt_config_client_model_sub_status_id:
-      result = evt->data.evt_config_client_model_sub_status.result;
-      if(result == SL_STATUS_OK) {
-        if(evt->data.evt_config_client_binding_status.handle == handle_sub_2000) {
-          app_log(" sub add OK\r\n");
-          sc = sl_btmesh_config_client_bind_model(network_id, provisionee_addr, blob_server_model_elem_index, 0xFFFF, 0x1400, appkey_index, &handle_bind_1400);
-          if (sc == SL_STATUS_OK) {
-            app_log("sl_btmesh_config_client_bind_model to node 0x%4.4x\r\n", provisionee_addr);
-          } else {
-            app_log("sl_btmesh_config_client_bind_model addr %x, error: %lx\r\n", provisionee_addr, sc);
-          }
-        } else {
-          app_log(" sub add OK\r\n");
-          servers[servers_size] = provisionee_addr & 0x00FF;
-          servers_size++;
-          servers[servers_size] = provisionee_addr >> 8;
-          servers_size++;
-        }
-      } else {
-        app_log(" sub error %x\r\n", result);
-      }
-      break;
-    // Provisioning failed
-    case sl_btmesh_evt_prov_provisioning_failed_id:
-      app_log_debug("%x\r\n%x\r\n",
-                    evt->data.evt_prov_provisioning_failed.reason,
-                    evt->data.evt_prov_provisioning_failed.uuid.data[0]);
-      break;
     case sl_btmesh_evt_vendor_model_send_complete_id:
-      result = evt->data.evt_vendor_model_send_complete.result;
-      if(result == SL_STATUS_OK && handle_send_blob_id == evt->data.evt_vendor_model_send_complete.handle) {
+      uint16_t result = evt->data.evt_vendor_model_send_complete.result;
+      if(result == SL_STATUS_OK && blob_id_handle == evt->data.evt_vendor_model_send_complete.handle) {
         send_image();
       }
       break;
-    default:
-      app_log_debug("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", (unsigned int)SL_BT_MSG_ID(evt->header),
-                                                                         (unsigned int)((SL_BT_MSG_ID(evt->header) >> 16) & 0xFF),
-                                                                         (unsigned int)((SL_BT_MSG_ID(evt->header) >> 24) & 0xFF) );
-      break;
-  }
-}
-
-/***************************************************************************//**
- * Button press Callbacks
- ******************************************************************************/
-void app_button_press_cb(uint8_t button, uint8_t duration)
-{
-  // Selecting action by duration
-  switch (duration) {
-    case APP_BUTTON_PRESS_DURATION_LONG:
-      // Handling of button press greater than 1s and less than 5s
-      if (button == BUTTON_0) {
-        if(servers_size > 0) send_blob_id();
+    case sl_btmesh_evt_vendor_model_receive_id:
+      if(evt->data.evt_vendor_model_receive.vendor_id == 0x1000 &&
+         evt->data.evt_vendor_model_receive.model_id == 0x2003) {
+          servers[servers_length] = evt->data.evt_vendor_model_receive.payload.data[0];
+          servers_length++;
+          servers[servers_length] = evt->data.evt_vendor_model_receive.payload.data[1];
+          servers_length++;
       }
       break;
+    // -------------------------------
+    // Default event handler.
     default:
       break;
   }
@@ -552,7 +506,7 @@ void send_image() {
 
   sl_status_t sc;
 
-  sc = sl_btmesh_blob_transfer_client_setup(blob_client_model_elem_index,
+  sc = sl_btmesh_blob_transfer_client_setup(blob_client_elem_index,
                                             blob_id,
                                             2048,
                                             appkey_index,
@@ -561,20 +515,16 @@ void send_image() {
                                             GRP_ADDR_BLOB,
                                             virtual_address,
                                             1,
-                                            servers_size,
+                                            servers_length,
                                             servers);
   app_assert_status_f(sc, "sl_btmesh_blob_transfer_client_setup failed");
 
-  app_log("sl_btmesh_blob_transfer_client_setup done\r\n");
-
-  sc = sl_btmesh_blob_transfer_client_setup_data_provider_array(blob_client_model_elem_index,
+  sc = sl_btmesh_blob_transfer_client_setup_data_provider_array(blob_client_elem_index,
                                                                 data,
                                                                 2048);
   app_assert_status_f(sc, "sl_btmesh_blob_transfer_client_setup_data_provider_array failed");
 
-  app_log("sl_btmesh_blob_transfer_client_setup_data_provider_array done\r\n");
-
-  sc = sl_btmesh_blob_transfer_client_start(blob_client_model_elem_index,
+  sc = sl_btmesh_blob_transfer_client_start(blob_client_elem_index,
                                             sl_btmesh_mbt_client_mbt_transfer_mode_both,
                                             handle_blob_transfer_client_notification);
   app_assert_status_f(sc, "sl_btmesh_blob_transfer_client_start failed");
@@ -593,14 +543,10 @@ void send_blob_id() {
                                            0x2001,
                                            0,
                                            0,
-                                           0,
+                                           blob_id_client_opcodes[0],
                                            1,
                                            1,
                                            &blob_id.data[0],
-                                           &handle_send_blob_id);
-  if (sc == SL_STATUS_OK) {
-    app_log("sl_btmesh_vendor_model_send to node 0x%4.4x\r\n", provisionee_addr);
-  } else {
-    app_log("sl_btmesh_vendor_model_send addr %x, error: %lx\r\n", provisionee_addr, sc);
-  }
+                                           &blob_id_handle);
+  app_assert_status_f(sc, "sl_btmesh_vendor_model_send_tracked failed");
 }

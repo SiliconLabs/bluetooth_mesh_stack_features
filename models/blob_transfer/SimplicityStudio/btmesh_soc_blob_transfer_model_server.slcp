@@ -16,20 +16,17 @@ filter:
     value: ["Advanced"]
 
 component:
+  - id: sl_main
   - id: app_assert
   - id: app_log
   - id: bootloader_interface
-  - id: app_button_press
   - id: bt_post_build
-  - id: btmesh_ctl_client
   - id: btmesh_factory_reset
   - id: btmesh_stack_gatt_prov_bearer
   - id: btmesh_stack_node
   - id: btmesh_stack_relay
   - id: btmesh_stack_vendor_model
-  - id: btmesh_lighting_client
   - id: btmesh_stack_test
-  - id: btmesh_stack_config_client
   - id: btmesh_provisionee
   - id: btmesh_proxy
   - id: btmesh_stack
@@ -38,21 +35,23 @@ component:
       - vcom
   - id: clock_manager
   - id: device_init
-  - id: sl_system
   - id: mpu
   - id: rail_util_pti
+  - id: btmesh_blob_transfer_server
+    instance:
+      - inst
+  - id: dmd_memlcd
+  - id: ls013b7dh03
+  - id: memlcd_usart
+  - id: glib
   - id: simple_button
     instance:
       - btn0
       - btn1
-  - id: btmesh_blob_transfer_server
-    instance:
-      - inst
-  - id: glib
 
 source:
   - path: ../server/src/app.c
-  - path: ../server/src/main.c
+  - path: ../server/src/app_bm.c
 
 include:
   - path: ../server/inc/
@@ -77,32 +76,34 @@ readme:
 other_file:
   - path: ../images/install_button_press.png
     directory: images
-  - path: ../images/add_config_client_model.png
+  - path: ../images/import_dcd_config.png
     directory: images
-  - path: ../images/add_vendor_model_1.png
+  - path: ../images/dcd_vendor_models_1.png
     directory: images
-  - path: ../images/increase_values_1.png
+  - path: ../images/import_gatt_configuration.png
     directory: images
-  - path: ../images/increase_values_2.png
+  - path: ../images/enable_vcom_display.png
     directory: images
-  - path: ../images/enable_virtual_com.png
+  - path: ../images/client_log.png
     directory: images
-  - path: ../images/buffer_memory_size.png
+  - path: ../images/dcd_vendor_models_2.png
     directory: images
-  - path: ../images/client_log_1.png
+  - path: ../images/pair_blob_client.png
     directory: images
-  - path: ../images/add_vendor_model_2.png
+  - path: ../images/choose_image.png
     directory: images
   - path: ../images/server_log_1.png
     directory: images
-  - path: ../images/client_log_2.png
+  - path: ../images/server_log_2.png
     directory: images
 
 configuration:
+  - name: EMDRV_DMADRV_DMA_CH_COUNT
+    value: 2
   - name: APP_LOG_LEVEL
     value: "APP_LOG_LEVEL_INFO"
-  - name: NVM3_DEFAULT_CACHE_SIZE
-    value: 100
+  - name: NVM3_DEFAULT_NVM_SIZE
+    value: "0x6000"
   - name: SL_BOARD_ENABLE_VCOM
     value: "1"
     condition:
@@ -119,14 +120,6 @@ configuration:
       - psa_crypto
   - name: SL_STACK_SIZE
     value: "0x1200"
-  - name: SL_BTMESH_CONFIG_MAX_PROVISIONED_DEVICES
-    value: "4"
-  - name: SL_BTMESH_CONFIG_MAX_PROVISIONED_DEVICE_APPKEYS
-    value: "4"
-  - name: SL_BTMESH_CONFIG_MAX_PROVISIONED_DEVICE_NETKEYS
-    value: "4"
-  - name: SL_BTMESH_CONFIG_MAX_FOUNDATION_CLIENT_CMDS
-    value: "4"
 
 tag:
   - hardware:board_only

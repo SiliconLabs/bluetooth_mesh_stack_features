@@ -33,12 +33,14 @@ This repository contains example projects which demonstrate the features of the 
 
 ### Embedded firmware examples
 
+- Models - **BLOB Transfer Model Examples** (Server/Client) ----- *NEW*
 - Models - **HSL Lighting Client Example**
 - Models - **Switch NCP Host Example**
 - Models - **Vendor Specific Model Examples** (Server/Client)
 - Network - **IV Recovery Example**
 - Network - **IV Update Example**
 - Network - **Scanning BLE beacons in Bluetooth Mesh mode Example**
+- Network - **Heartbeat Provisioner Example** ----- *NEW*
 - Node - **Node Memory Reset i.e. Erase NVM Example**
 - Provisioning - **Embedded Provisioner Example**
 - Provisioning - **Host Provisioner Example**

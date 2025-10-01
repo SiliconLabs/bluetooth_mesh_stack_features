@@ -3,7 +3,7 @@
  * @brief Application interface provided to main().
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2024 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -31,15 +31,24 @@
 #ifndef APP_H
 #define APP_H
 
-/***************************************************************************//**
- * Application Init.
- ******************************************************************************/
-void app_init(void);
+#include <stdbool.h>
 
-/***************************************************************************//**
- * Application Process Action.
- ******************************************************************************/
-void app_process_action(void);
+/**************************************************************************//**
+ * Proceed with execution. (Indicate that it is required to run the application
+ * process action.)
+ *****************************************************************************/
+void app_proceed(void);
+
+/**************************************************************************//**
+ * Check if it is required to process with execution.
+ * @return true if required, false otherwise.
+ *****************************************************************************/
+bool app_is_process_required(void);
+
+/**************************************************************************//**
+ * Initialize the application for BT Mesh.
+ *****************************************************************************/
+void app_permanent_memory_alloc(void);
 
 void send_blob_id();
 

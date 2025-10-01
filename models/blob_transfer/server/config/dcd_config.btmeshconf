@@ -22,6 +22,11 @@
             "name": "BLOB ID Server",
             "mid": "0x2000",
             "cid": "0x1000"
+          },
+          {
+            "name": "Server Address",
+            "mid": "0x2002",
+            "cid": "0x1000"
           }
         ]
       }
