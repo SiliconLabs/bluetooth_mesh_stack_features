@@ -1,11 +1,11 @@
-name: CLA-Assistant
+name: 01-CLA-Assistant
 ## This workflow is used for public repositories
 
 on:
   issue_comment:
     types: [created]
   pull_request_target:
-    types: [opened, closed, synchronize, reopened]ß
+    types: [opened, closed, synchronize, reopened]
 
 permissions:
   actions: write
@@ -14,7 +14,7 @@ permissions:
   statuses: write
 
 jobs:
-  cla_assistant:
+  CLAAssistant:
     if: github.repository_visibility == 'public'
     runs-on: ubuntu-24.04
     steps:
